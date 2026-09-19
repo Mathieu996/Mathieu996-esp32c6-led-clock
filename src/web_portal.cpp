@@ -121,6 +121,7 @@ static void handleGetConfig() {
   doc["datesc"] = gConfig.showDateScroll;
   doc["dateiv"] = gConfig.dateIntervalSec;
   doc["flip"] = gConfig.flipDisplay;
+  doc["hwType"] = gConfig.hwType;
   doc["showTemp"] = gConfig.showTemp;
   doc["tempOff"] = gConfig.tempOffset;
   doc["nightOn"] = gConfig.nightEnabled;
@@ -147,6 +148,7 @@ static void handlePostConfig() {
 
   bool wifiChanged = false;
   bool timeChanged = false;
+  bool hwChanged = false;
 
   if (!doc["ssid"].isNull()) {
     const char *v = doc["ssid"] | "";
@@ -176,6 +178,11 @@ static void handlePostConfig() {
   if (!doc["datesc"].isNull()) gConfig.showDateScroll = doc["datesc"];
   if (!doc["dateiv"].isNull()) gConfig.dateIntervalSec = constrain((int)doc["dateiv"], 5, 3600);
   if (!doc["flip"].isNull()) gConfig.flipDisplay = doc["flip"];
+  if (!doc["hwType"].isNull()) {
+    uint8_t v = constrain((int)doc["hwType"], 0, 7);
+    if (v != gConfig.hwType) hwChanged = true;
+    gConfig.hwType = v;
+  }
   if (!doc["showTemp"].isNull()) gConfig.showTemp = doc["showTemp"];
   if (!doc["tempOff"].isNull()) gConfig.tempOffset = constrain(doc["tempOff"].as<float>(), -10.0f, 10.0f);
   if (!doc["nightOn"].isNull()) gConfig.nightEnabled = doc["nightOn"];
@@ -190,7 +197,7 @@ static void handlePostConfig() {
 
   server.send(200, "application/json", "{\"ok\":true}");
 
-  if (wifiChanged) scheduleRestart(1500); // laisse le temps a la reponse HTTP de partir
+  if (wifiChanged || hwChanged) scheduleRestart(1500); // laisse le temps a la reponse HTTP de partir
 }
 
 static void handleWifiScan() {

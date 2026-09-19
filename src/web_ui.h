@@ -101,6 +101,19 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
 
   <div class="card">
     <h2>Affichage</h2>
+    <div class="row"><label>Orientation des modules</label>
+      <select id="hwType">
+        <option value="4">4 - FC-16 (blocs 4-en-1 courants)</option>
+        <option value="2">2 - Generique (modules 1288BB)</option>
+        <option value="6">6 - Parola</option>
+        <option value="7">7 - ICStation</option>
+        <option value="0">0 - DR0 CR0 RR0</option>
+        <option value="1">1 - DR0 CR0 RR1</option>
+        <option value="3">3 - DR0 CR1 RR1</option>
+        <option value="5">5 - DR1 CR0 RR1</option>
+      </select>
+    </div>
+    <small class="hint">Si les chiffres sont couches, a l'envers, en miroir ou decoupes, essayez une autre orientation (la carte redemarre a chaque changement).</small>
     <div class="row"><label>Luminosite</label><input type="range" id="bright" min="0" max="15" step="1"><span id="brightVal">-</span></div>
     <div class="switch-row"><span>Afficher les secondes (defilement continu)</span><input type="checkbox" id="secs"></div>
     <div class="switch-row"><span>Faire defiler la date periodiquement</span><input type="checkbox" id="datesc"></div>
@@ -165,6 +178,7 @@ async function loadConfig() {
   document.getElementById('datesc').checked = c.datesc;
   document.getElementById('dateiv').value = c.dateiv;
   document.getElementById('flip').checked = c.flip;
+  document.getElementById('hwType').value = c.hwType;
   document.getElementById('showTemp').checked = c.showTemp;
   document.getElementById('tempOff').value = c.tempOff;
   document.getElementById('nightOn').checked = c.nightOn;
@@ -229,6 +243,7 @@ async function saveConfig() {
     datesc: document.getElementById('datesc').checked,
     dateiv: parseInt(document.getElementById('dateiv').value, 10),
     flip: document.getElementById('flip').checked,
+    hwType: parseInt(document.getElementById('hwType').value, 10),
     showTemp: document.getElementById('showTemp').checked,
     tempOff: parseFloat(document.getElementById('tempOff').value) || 0,
     nightOn: document.getElementById('nightOn').checked,
@@ -239,7 +254,7 @@ async function saveConfig() {
   };
   const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   if (r.ok) {
-    toast('Enregistre. Redemarrage si le Wi-Fi a change...');
+    toast('Enregistre. Redemarrage si le Wi-Fi ou l\'orientation a change...');
     document.getElementById('pass').value = '';
     setTimeout(loadStatus, 3000);
   } else toast('Erreur lors de l\'enregistrement');

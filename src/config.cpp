@@ -23,8 +23,9 @@ void configLoad(AppConfig &cfg) {
   cfg.showDateScroll    = prefs.getBool("datesc", true);
   cfg.dateIntervalSec   = prefs.getUShort("dateiv", 30);
   cfg.flipDisplay       = prefs.getBool("flip", false);
+  cfg.hwType            = prefs.getUChar("hwtype", DEFAULT_HW_TYPE_INDEX) & 7;
 
-  cfg.showTemp          = prefs.getBool("showtemp", true);
+  cfg.showTemp         = prefs.getBool("showtemp", true);
   cfg.tempOffset        = prefs.getFloat("tempoff", 0.0f);
   cfg.nightEnabled      = prefs.getBool("nighton", true);
   cfg.nightStartMin     = prefs.getUShort("nightst", 22 * 60);
@@ -52,6 +53,7 @@ void configSave(const AppConfig &cfg) {
   prefs.putBool("datesc", cfg.showDateScroll);
   prefs.putUShort("dateiv", cfg.dateIntervalSec);
   prefs.putBool("flip", cfg.flipDisplay);
+  prefs.putUChar("hwtype", cfg.hwType);
 
   prefs.putBool("showtemp", cfg.showTemp);
   prefs.putFloat("tempoff", cfg.tempOffset);

@@ -56,13 +56,18 @@ les matrices et l'ESP32. Le firmware demarre a une luminosite moderee
 
 ### Type de cablage MD_MAX72XX
 
-Les modules 1288BB "nus" (pas de PCB porteur type FC-16) correspondent
-generalement au type `GENERIC_HW`, deja configure par defaut. Si au premier
-demarrage l'affichage montre des caracteres fragmentes, dans le mauvais
-ordre, ou inverses, changez `MATRIX_HARDWARE_TYPE` dans `include/config.h`
-et testez `PAROLA_HW` puis `FC16_HW` (une des trois convient toujours). Le
-reglage "Retourner l'affichage" de l'interface web gere lui la rotation
-180 degres si les modules sont montes tete-beche.
+Selon leur fabrication, les modules 8x8 n'ont pas tous la meme orientation
+interne. Les 8 types de MD_MAX72XX couvrent les 8 orientations possibles
+(rotations et miroirs). Ce reglage s'appelle **Orientation des modules** dans
+la carte *Affichage* de l'interface web (la carte redemarre a chaque
+changement) ; sa valeur par defaut est `DEFAULT_HW_TYPE_INDEX` dans
+`include/config.h`.
+
+Si les chiffres sont couches, a l'envers, en miroir ou decoupes (des formes
+qui ne ressemblent a aucune police), essayez les orientations une par une :
+`4` (FC-16, blocs 4-en-1 courants), `2` (generique 1288BB), `6` (Parola),
+`7` (ICStation), puis les autres. Le reglage "Retourner l'affichage" gere lui
+la rotation 180 degres de tout l'ecran, ordre des modules compris.
 
 ## 2. Compilation et flash (PlatformIO)
 

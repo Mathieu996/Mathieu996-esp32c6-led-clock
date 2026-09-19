@@ -5,7 +5,17 @@
 #include <MD_Parola.h>
 #include <MD_MAX72XX.h>
 
-static MD_Parola P(MATRIX_HARDWARE_TYPE, MATRIX_DIN_PIN, MATRIX_CLK_PIN, MATRIX_CS_PIN, MATRIX_COUNT);
+// Cree dans displayInit() : l'orientation des modules (gConfig.hwType) est un
+// reglage enregistre, pris en compte au demarrage.
+static MD_Parola *P = nullptr;
+
+// Les 8 types de cablage, indices par (DR << 2) | (CR << 1) | RR.
+static const MD_MAX72XX::moduleType_t HW_TYPES[8] = {
+  MD_MAX72XX::DR0CR0RR0_HW, MD_MAX72XX::DR0CR0RR1_HW,
+  MD_MAX72XX::DR0CR1RR0_HW, MD_MAX72XX::DR0CR1RR1_HW,
+  MD_MAX72XX::DR1CR0RR0_HW, MD_MAX72XX::DR1CR0RR1_HW,
+  MD_MAX72XX::DR1CR1RR0_HW, MD_MAX72XX::DR1CR1RR1_HW,
+};
 
 enum DisplayMode : uint8_t { DM_STATIC_CLOCK, DM_SCROLLING };
 static DisplayMode dispMode = DM_STATIC_CLOCK;
@@ -52,8 +62,13 @@ static void buildDateStr(char *out, size_t n) {
 }
 
 static void startScroll(const char *text) {
-  P.displayClear();
-  P.displayText(text, PA_CENTER, 60, 300, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  // MD_Parola ne copie pas le texte : elle garde un pointeur et le relit a
+  // chaque image du defilement. Il faut donc un tampon qui reste valide (un
+  // tableau local a l'appelant serait deja ecrase -> caracteres aleatoires).
+  static char scrollBuf[48];
+  strlcpy(scrollBuf, text, sizeof(scrollBuf));
+  P->displayClear();
+  P->displayText(scrollBuf, PA_CENTER, 60, 300, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
   dispMode = DM_SCROLLING;
 }
 
@@ -84,28 +99,29 @@ static bool isNightNow() {
 
 static void applyBrightness() {
   bool off = nightActive && gConfig.nightOff;
-  P.displayShutdown(off);
+  P->displayShutdown(off);
   if (!off) {
     uint8_t level = nightActive ? gConfig.nightBrightness : gConfig.brightness;
-    P.setIntensity(constrain(level, 0, 15));
+    P->setIntensity(constrain(level, 0, 15));
   }
 }
 
 // ---------------------------------------------------------------------------
 void displayInit() {
-  P.begin();
+  P = new MD_Parola(HW_TYPES[gConfig.hwType & 7], MATRIX_DIN_PIN, MATRIX_CLK_PIN, MATRIX_CS_PIN, MATRIX_COUNT);
+  P->begin();
   displayApplySettings();
-  P.displayClear();
+  P->displayClear();
 }
 
 void displayApplySettings() {
   nightActive = isNightNow();
   applyBrightness();
-  P.setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_UD);
-  P.setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR);
+  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_UD);
+  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR);
 
   // Reinitialise proprement l'etat d'affichage apres un changement de reglage
-  P.displayClear();
+  P->displayClear();
   scrollingIsDate = false;
   lastDateShown = millis();
   colonOn = true;
@@ -113,9 +129,9 @@ void displayApplySettings() {
 }
 
 void displayShowStatus(const char *msg) {
-  P.displayClear();
-  P.setTextAlignment(PA_CENTER);
-  P.print(msg);
+  P->displayClear();
+  P->setTextAlignment(PA_CENTER);
+  P->print(msg);
 }
 
 void displayLoop() {
@@ -131,7 +147,7 @@ void displayLoop() {
   }
 
   if (dispMode == DM_SCROLLING) {
-    if (P.displayAnimate()) {
+    if (P->displayAnimate()) {
       if (scrollingIsDate) {
         scrollingIsDate = false;
         lastDateShown = now;
@@ -168,7 +184,7 @@ void displayLoop() {
     colonOn = !colonOn;
     char buf[16];
     buildTimeStr(buf, sizeof(buf), false);
-    P.setTextAlignment(PA_CENTER);
-    P.print(buf);
+    P->setTextAlignment(PA_CENTER);
+    P->print(buf);
   }
 }

@@ -22,11 +22,15 @@
 // Nombre de modules 8x8 chaines (4 modules -> affichage 32x8)
 #define MATRIX_COUNT     4
 
-// Type de cablage MD_MAX72XX. Les modules 1288BB "nus" (fils volants, pas de
-// PCB porteur type FC-16) correspondent generalement a GENERIC_HW. Si le
-// texte apparait fragmente / dans le mauvais ordre, essayez PAROLA_HW ou
-// FC16_HW (voir README).
-#define MATRIX_HARDWARE_TYPE MD_MAX72XX::GENERIC_HW
+// Orientation des modules 8x8 (type de cablage MD_MAX72XX). Les 8 types de la
+// bibliotheque couvrent les 8 orientations possibles d'un module ; on les
+// designe par un indice 0-7 = (DR << 2) | (CR << 1) | RR, reglable ensuite
+// depuis l'interface web (voir README). Ci-dessous : l'indice par defaut.
+//   2 = DR0CR1RR0 = GENERIC_HW   (modules 1288BB "nus")
+//   4 = DR1CR0RR0 = FC16_HW      (blocs 4-en-1 FC-16 courants)
+//   6 = DR1CR1RR0 = PAROLA_HW
+//   7 = DR1CR1RR1 = ICSTATION_HW
+#define DEFAULT_HW_TYPE_INDEX  4
 
 // Sonde de temperature I2C BME280 / BMP280 (optionnelle : sans sonde, la
 // temperature n'est simplement pas affichee).
@@ -63,6 +67,7 @@ struct AppConfig {
   bool showDateScroll    = true;  // fait defiler la date periodiquement
   uint16_t dateIntervalSec = 30;  // toutes les X secondes
   bool flipDisplay       = false; // rotation 180 degres
+  uint8_t hwType         = DEFAULT_HW_TYPE_INDEX; // orientation des modules, 0-7 (redemarrage requis)
 
   // Temperature (sonde I2C) : ajoutee au defilement periodique de la date
   bool showTemp          = true;
