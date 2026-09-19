@@ -13,3 +13,10 @@ void displayLoop();
 
 // Affiche un message de statut court et statique (ex: "AP", "...", "ERR").
 void displayShowStatus(const char *msg);
+
+// Sequence de demarrage : fait defiler `text` (ex. "IP 192.168.1.20") en
+// boucle. Si untilTimeSynced, s'arrete apres un passage complet des que
+// l'heure NTP est synchronisee (ou apres 90 s), puis affiche l'heure ; sinon
+// (mode point d'acces, pas d'heure possible) continue jusqu'a un changement
+// de reglage.
+void displayStartBootSequence(const char *text, bool untilTimeSynced);

@@ -24,6 +24,7 @@ void configLoad(AppConfig &cfg) {
   cfg.dateIntervalSec   = prefs.getUShort("dateiv", 30);
   cfg.flipDisplay       = prefs.getBool("flip", false);
   cfg.hwType            = prefs.getUChar("hwtype", DEFAULT_HW_TYPE_INDEX) & 7;
+  cfg.showIpAtBoot      = prefs.getBool("bootip", true);
 
   cfg.showTemp         = prefs.getBool("showtemp", true);
   cfg.tempOffset        = prefs.getFloat("tempoff", 0.0f);
@@ -54,6 +55,7 @@ void configSave(const AppConfig &cfg) {
   prefs.putUShort("dateiv", cfg.dateIntervalSec);
   prefs.putBool("flip", cfg.flipDisplay);
   prefs.putUChar("hwtype", cfg.hwType);
+  prefs.putBool("bootip", cfg.showIpAtBoot);
 
   prefs.putBool("showtemp", cfg.showTemp);
   prefs.putFloat("tempoff", cfg.tempOffset);

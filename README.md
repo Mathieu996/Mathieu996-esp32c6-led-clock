@@ -107,6 +107,14 @@ reseau, a l'adresse affichee sur le port serie, ou via
 `http://horloge.local/` (mDNS ; nom modifiable dans `config.h`,
 `DEFAULT_HOSTNAME`).
 
+### Adresse IP au demarrage
+
+Par defaut, l'adresse IP de la carte defile en clair au demarrage
+(`IP 192.168.1.20`), en boucle, jusqu'a la synchronisation de l'heure (apres
+un passage complet au minimum), puis l'heure s'affiche. En mode point d'acces,
+`AP 192.168.4.1` defile jusqu'a la configuration. Ce comportement se desactive
+avec **Afficher l'adresse IP au demarrage** dans la carte *Affichage*.
+
 ### Reinitialisation
 
 Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
@@ -120,9 +128,10 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
 - **Heure & NTP** : serveur NTP, fuseau horaire (presets ou chaine POSIX TZ
   personnalisee), format 12h/24h.
 - **Affichage** : luminosite (0-15), affichage avec ou sans secondes
-  (defilement continu si secondes activees), defilement periodique de la
+  (HH:MM fixe sur les 3 premiers modules, secondes en petits chiffres en bas
+  a droite du dernier ; en 12h, sans AM/PM dans ce mode), defilement periodique de la
   date suivie de la temperature (si sonde), correction de temperature,
-  rotation 180 degres.
+  rotation 180 degres, affichage de l'adresse IP au demarrage.
 - **Mode nuit** : plage horaire (peut passer minuit, ex. 22:00 -> 07:00)
   pendant laquelle la luminosite passe a un niveau de nuit (0-15), ou
   l'affichage s'eteint completement. Actif par defaut de 22:00 a 07:00, au

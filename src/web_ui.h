@@ -115,13 +115,15 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     </div>
     <small class="hint">Si les chiffres sont couches, a l'envers, en miroir ou decoupes, essayez une autre orientation (la carte redemarre a chaque changement).</small>
     <div class="row"><label>Luminosite</label><input type="range" id="bright" min="0" max="15" step="1"><span id="brightVal">-</span></div>
-    <div class="switch-row"><span>Afficher les secondes (defilement continu)</span><input type="checkbox" id="secs"></div>
+    <div class="switch-row"><span>Afficher les secondes (petits chiffres a droite)</span><input type="checkbox" id="secs"></div>
     <div class="switch-row"><span>Faire defiler la date periodiquement</span><input type="checkbox" id="datesc"></div>
     <div class="row"><label>Intervalle date (s)</label><input type="number" id="dateiv" min="5" max="600"></div>
     <div class="switch-row"><span>Afficher la temperature avec la date</span><input type="checkbox" id="showTemp"></div>
     <div class="row"><label>Correction temp. (&deg;C)</label><input type="number" id="tempOff" min="-10" max="10" step="0.1"></div>
     <small class="hint">La temperature defile avec la date (sonde BME280/BMP280 requise). La correction compense un module qui chauffe un peu.</small>
     <div class="switch-row"><span>Retourner l'affichage (180 deg)</span><input type="checkbox" id="flip"></div>
+    <div class="switch-row"><span>Afficher l'adresse IP au demarrage</span><input type="checkbox" id="bootIp"></div>
+    <small class="hint">L'adresse IP defile au demarrage, jusqu'a la synchronisation de l'heure.</small>
   </div>
 
   <div class="card">
@@ -179,6 +181,7 @@ async function loadConfig() {
   document.getElementById('dateiv').value = c.dateiv;
   document.getElementById('flip').checked = c.flip;
   document.getElementById('hwType').value = c.hwType;
+  document.getElementById('bootIp').checked = c.bootIp;
   document.getElementById('showTemp').checked = c.showTemp;
   document.getElementById('tempOff').value = c.tempOff;
   document.getElementById('nightOn').checked = c.nightOn;
@@ -244,6 +247,7 @@ async function saveConfig() {
     dateiv: parseInt(document.getElementById('dateiv').value, 10),
     flip: document.getElementById('flip').checked,
     hwType: parseInt(document.getElementById('hwType').value, 10),
+    bootIp: document.getElementById('bootIp').checked,
     showTemp: document.getElementById('showTemp').checked,
     tempOff: parseFloat(document.getElementById('tempOff').value) || 0,
     nightOn: document.getElementById('nightOn').checked,

@@ -39,6 +39,14 @@ void setup() {
 
   webPortalBegin();
   timeSyncStart();
+
+  if (gConfig.showIpAtBoot) {
+    // En mode point d'acces l'heure ne peut pas etre synchronisee : l'adresse
+    // reste affichee jusqu'a la configuration.
+    bool ap = webPortalIsAPMode();
+    String msg = String(ap ? "AP " : "IP ") + webPortalIpString();
+    displayStartBootSequence(msg.c_str(), !ap);
+  }
 }
 
 void loop() {

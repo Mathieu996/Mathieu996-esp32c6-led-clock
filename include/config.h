@@ -68,6 +68,7 @@ struct AppConfig {
   uint16_t dateIntervalSec = 30;  // toutes les X secondes
   bool flipDisplay       = false; // rotation 180 degres
   uint8_t hwType         = DEFAULT_HW_TYPE_INDEX; // orientation des modules, 0-7 (redemarrage requis)
+  bool showIpAtBoot      = true;  // au demarrage : fait defiler l'adresse IP jusqu'a la synchro NTP
 
   // Temperature (sonde I2C) : ajoutee au defilement periodique de la date
   bool showTemp          = true;

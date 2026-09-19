@@ -14,3 +14,6 @@ void webPortalLoop();
 
 // true si actuellement en mode point d'acces de configuration.
 bool webPortalIsAPMode();
+
+// Adresse IP a laquelle l'interface web est joignable (STA ou point d'acces).
+String webPortalIpString();

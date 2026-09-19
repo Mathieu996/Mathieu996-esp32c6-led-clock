@@ -84,7 +84,7 @@ static void handleRoot() {
 static void handleStatus() {
   JsonDocument doc;
   doc["mode"] = apMode ? "AP" : "STA";
-  doc["ip"] = apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
+  doc["ip"] = webPortalIpString();
   doc["ssid"] = apMode ? apSsidName() : String(gConfig.wifiSsid);
   doc["ntpSynced"] = timeIsSynced();
   doc["version"] = FIRMWARE_VERSION;
@@ -122,6 +122,7 @@ static void handleGetConfig() {
   doc["dateiv"] = gConfig.dateIntervalSec;
   doc["flip"] = gConfig.flipDisplay;
   doc["hwType"] = gConfig.hwType;
+  doc["bootIp"] = gConfig.showIpAtBoot;
   doc["showTemp"] = gConfig.showTemp;
   doc["tempOff"] = gConfig.tempOffset;
   doc["nightOn"] = gConfig.nightEnabled;
@@ -183,6 +184,7 @@ static void handlePostConfig() {
     if (v != gConfig.hwType) hwChanged = true;
     gConfig.hwType = v;
   }
+  if (!doc["bootIp"].isNull()) gConfig.showIpAtBoot = doc["bootIp"];
   if (!doc["showTemp"].isNull()) gConfig.showTemp = doc["showTemp"];
   if (!doc["tempOff"].isNull()) gConfig.tempOffset = constrain(doc["tempOff"].as<float>(), -10.0f, 10.0f);
   if (!doc["nightOn"].isNull()) gConfig.nightEnabled = doc["nightOn"];
@@ -279,4 +281,8 @@ void webPortalLoop() {
 
 bool webPortalIsAPMode() {
   return apMode;
+}
+
+String webPortalIpString() {
+  return apMode ? WiFi.softAPIP().toString() : WiFi.localIP().toString();
 }
