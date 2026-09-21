@@ -5,7 +5,7 @@
 #include <sys/time.h>
 #include <time.h>
 #include <MD_Parola.h>
-#include <MD_MAX72XX.h>
+#include <MD_MAX72xx.h>
 
 // Cree dans displayInit() : l'orientation des modules (gConfig.hwType) est un
 // reglage enregistre, pris en compte au demarrage.
