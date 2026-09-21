@@ -15,9 +15,12 @@
 // Broches choisies ci-dessous car libres sur le header de l'ESP32-C6-DEV-KIT-N8
 // et hors broches de strapping/boot (GPIO4, 5, 8, 9, 15) et hors USB-JTAG
 // (GPIO12/13). Verifiez le silkscreen de votre carte et ajustez si necessaire.
-#define MATRIX_DIN_PIN   18
-#define MATRIX_CLK_PIN   19
-#define MATRIX_CS_PIN    20
+//#define MATRIX_DIN_PIN   18
+//#define MATRIX_CLK_PIN   19
+//#define MATRIX_CS_PIN    20
+#define MATRIX_DIN_PIN   6
+#define MATRIX_CLK_PIN   4
+#define MATRIX_CS_PIN    10
 
 // Nombre de modules 8x8 chaines (4 modules -> affichage 32x8)
 #define MATRIX_COUNT     4
@@ -35,9 +38,16 @@
 // Sonde de temperature I2C BME280 / BMP280 (optionnelle : sans sonde, la
 // temperature n'est simplement pas affichee).
 //   VCC -> 3V3 (PAS le 5V), GND -> GND, SDA/SCL -> broches ci-dessous.
-// Ce sont les broches I2C par defaut de la carte (GPIO22/23).
+// ESP32-C6 : broches I2C par defaut de la carte (GPIO22/23).
+// ESP32-C3 (SuperMini) : ces GPIO n'existent pas (0 a 21 seulement), on
+// utilise GPIO0/1, libres et hors strapping (2, 8, 9) et USB (18, 19).
+#if CONFIG_IDF_TARGET_ESP32C3
+#define SENSOR_SDA_PIN   0
+#define SENSOR_SCL_PIN   1
+#else
 #define SENSOR_SDA_PIN   23
 #define SENSOR_SCL_PIN   22
+#endif
 
 // Bouton BOOT de la carte (GPIO9 sur la plupart des cartes ESP32-C6) :
 // un appui long au demarrage force le mode point d'acces de configuration.

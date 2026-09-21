@@ -29,7 +29,7 @@ static void checkFactoryResetButton() {
 void setup() {
   Serial.begin(115200);
   delay(300);
-  Serial.println("\n[Boot] Horloge LED ESP32-C6");
+  Serial.println("\n[Boot] Horloge LED " CONFIG_IDF_TARGET);
 
   configLoad(gConfig);
   displayInit();
