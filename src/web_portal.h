@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define FIRMWARE_VERSION "1.1.0"
+#define FIRMWARE_VERSION "1.2.0"
 
 // Se connecte au Wi-Fi enregistre, ou bascule en point d'acces de
 // configuration ("HorlogeLED-XXXX") si aucun reseau n'est configure ou si

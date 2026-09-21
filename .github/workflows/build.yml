@@ -1,7 +1,7 @@
 name: Build firmware
 
 on:
-  push:
+  push: # branches et tags (un tag "v*" declenche aussi la publication)
   pull_request:
   workflow_dispatch: # bouton "Run workflow" dans l'onglet Actions
 
@@ -41,3 +41,48 @@ jobs:
           path: |
             .pio/build/${{ matrix.env }}/firmware.factory.bin
             .pio/build/${{ matrix.env }}/firmware.bin
+
+  # Publie une release GitHub quand on pousse un tag "vX.Y.Z"
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # necessaire pour creer la release
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artefacts
+
+      - name: Creer la release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp artefacts/firmware-esp32-c3-supermini/firmware.factory.bin horloge-led-esp32-c3-supermini.bin
+          cp artefacts/firmware-esp32-c6-devkitc-1/firmware.factory.bin horloge-led-esp32-c6.bin
+          cat > notes.md <<'EOF'
+          ## Telechargement
+
+          Choisissez le fichier correspondant a votre carte, a ecrire a l'adresse **0x0** :
+
+          | Carte | Fichier |
+          |---|---|
+          | ESP32-C3 SuperMini | `horloge-led-esp32-c3-supermini.bin` |
+          | ESP32-C6-DEV-KIT-N8 | `horloge-led-esp32-c6.bin` |
+
+          Avec `esptool` (Python) :
+
+          ```
+          python -m esptool --chip esp32c3 write-flash 0x0 horloge-led-esp32-c3-supermini.bin
+          python -m esptool --chip esp32c6 write-flash 0x0 horloge-led-esp32-c6.bin
+          ```
+
+          Ou dans le navigateur avec https://espressif.github.io/esptool-js/ (adresse 0x0).
+          Si le port n'apparait pas, maintenez le bouton BOOT en branchant la carte.
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            horloge-led-esp32-c3-supermini.bin \
+            horloge-led-esp32-c6.bin

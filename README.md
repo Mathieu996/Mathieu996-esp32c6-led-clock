@@ -92,16 +92,26 @@ Sur le **C3 SuperMini**, le port serie passe par l'USB natif (active par
 `ARDUINO_USB_CDC_ON_BOOT`). Si le port COM n'apparait pas au flash, maintenez
 le bouton BOOT (GPIO9) en branchant la carte pour passer en mode bootloader.
 
-### Compilation sur GitHub (sans toolchain local)
+### Firmware pret a flasher (sans toolchain local)
 
-Le workflow [`.github/workflows/build.yml`](.github/workflows/build.yml)
-compile les deux cartes a chaque push. Telechargez l'artefact
-`firmware-<carte>` dans l'onglet *Actions*, puis ecrivez
-`firmware.factory.bin` a l'adresse `0x0` :
+Les binaires compiles sont disponibles dans la page
+[**Releases**](https://github.com/Mathieu996/Mathieu996-esp32c6-led-clock/releases)
+du depot : telechargez `horloge-led-esp32-c3-supermini.bin` ou
+`horloge-led-esp32-c6.bin`, puis ecrivez-le a l'adresse `0x0` :
 
 ```bash
-python -m esptool --chip esp32c3 write-flash 0x0 firmware.factory.bin
+python -m esptool --chip esp32c3 write-flash 0x0 horloge-led-esp32-c3-supermini.bin
 ```
+
+Le workflow [`.github/workflows/build.yml`](.github/workflows/build.yml)
+compile les deux cartes a chaque push (artefacts dans l'onglet *Actions*) et
+publie une release quand on pousse un tag `vX.Y.Z` :
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
+
+Pensez a aligner `FIRMWARE_VERSION` dans `src/web_portal.h` avec le tag.
 
 ## 3. Premiere configuration (portail Wi-Fi)
 
