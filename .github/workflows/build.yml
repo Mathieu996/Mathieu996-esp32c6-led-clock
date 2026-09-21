@@ -11,11 +11,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - env: esp32-c3-supermini
-            chip: esp32c3
-          - env: esp32-c6-devkitc-1
-            chip: esp32c6
+        env: [esp32-c3-supermini, esp32-c6-devkitc-1]
 
     steps:
       - uses: actions/checkout@v4
@@ -26,33 +22,22 @@ jobs:
 
       - uses: actions/cache@v4
         with:
-          path: |
-            ~/.platformio
+          path: ~/.platformio
           key: pio-${{ matrix.env }}-${{ hashFiles('platformio.ini') }}
           restore-keys: pio-${{ matrix.env }}-
 
-      - name: Installer PlatformIO et esptool
-        run: pip install platformio "esptool>=5,<6"
+      - name: Installer PlatformIO
+        run: pip install platformio
 
       - name: Compiler
         run: pio run -e ${{ matrix.env }}
 
-      # Fusionne bootloader + partitions + boot_app0 + firmware en un seul .bin
-      # a ecrire a l'offset 0x0 (pratique pour un outil de flash dans le
-      # navigateur, ou "esptool write-flash 0x0 <fichier>").
-      - name: Creer le binaire complet
-        run: |
-          B=.pio/build/${{ matrix.env }}
-          esptool --chip ${{ matrix.chip }} merge-bin \
-            -o $B/firmware-complet.bin \
-            0x0 $B/bootloader.bin \
-            0x8000 $B/partitions.bin \
-            0xe000 ~/.platformio/packages/framework-arduinoespressif32/tools/partitions/boot_app0.bin \
-            0x10000 $B/firmware.bin
-
+      # firmware.factory.bin = bootloader + partitions + boot_app0 + firmware,
+      # genere par PlatformIO : a ecrire a l'offset 0x0 (outil de flash dans le
+      # navigateur, ou "esptool write-flash 0x0 firmware.factory.bin").
       - uses: actions/upload-artifact@v4
         with:
           name: firmware-${{ matrix.env }}
           path: |
-            .pio/build/${{ matrix.env }}/firmware-complet.bin
+            .pio/build/${{ matrix.env }}/firmware.factory.bin
             .pio/build/${{ matrix.env }}/firmware.bin

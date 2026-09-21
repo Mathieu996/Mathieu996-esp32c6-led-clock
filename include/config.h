@@ -7,20 +7,26 @@
 // Cablage MAX7219 (chaine de 4 modules 1288BB, DOUT du module 1 -> DIN du
 // module 2, etc.) en "software SPI" (n'importe quelles broches libres) :
 //   VCC  -> 5V (les 4 modules chaines consomment jusqu'a ~1A a pleine luminosite)
-//   GND  -> GND (commun avec l'ESP32-C6)
+//   GND  -> GND (commun avec l'ESP32)
 //   DIN  -> voir MATRIX_DIN_PIN  (entree donnees du 1er module)
 //   CS   -> voir MATRIX_CS_PIN   (LOAD/CS, relie a tous les modules)
 //   CLK  -> voir MATRIX_CLK_PIN  (horloge, reliee a tous les modules)
 //
-// Broches choisies ci-dessous car libres sur le header de l'ESP32-C6-DEV-KIT-N8
-// et hors broches de strapping/boot (GPIO4, 5, 8, 9, 15) et hors USB-JTAG
-// (GPIO12/13). Verifiez le silkscreen de votre carte et ajustez si necessaire.
-//#define MATRIX_DIN_PIN   18
-//#define MATRIX_CLK_PIN   19
-//#define MATRIX_CS_PIN    20
+// Les broches dependent de la carte (choisie par l'environnement PlatformIO).
+// Verifiez le silkscreen de votre carte et ajustez si necessaire.
+#if CONFIG_IDF_TARGET_ESP32C3
+// ESP32-C3 SuperMini : hors broches de strapping (GPIO2, 8, 9) et hors USB
+// (GPIO18/19).
 #define MATRIX_DIN_PIN   6
 #define MATRIX_CLK_PIN   4
 #define MATRIX_CS_PIN    10
+#else
+// ESP32-C6-DEV-KIT-N8 : libres sur le header et hors broches de strapping/boot
+// (GPIO4, 5, 8, 9, 15) et hors USB-JTAG (GPIO12/13).
+#define MATRIX_DIN_PIN   18
+#define MATRIX_CLK_PIN   19
+#define MATRIX_CS_PIN    20
+#endif
 
 // Nombre de modules 8x8 chaines (4 modules -> affichage 32x8)
 #define MATRIX_COUNT     4

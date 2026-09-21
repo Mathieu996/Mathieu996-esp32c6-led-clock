@@ -1,7 +1,7 @@
-# Horloge LED ESP32-C6 (4x matrice 8x8, MAX7219 / 1288BB)
+# Horloge LED ESP32-C6 / ESP32-C3 (4x matrice 8x8, MAX7219 / 1288BB)
 
 Firmware PlatformIO/Arduino pour une horloge murale :
-- ESP32-C6-DEV-KIT-N8 (Waveshare)
+- ESP32-C6-DEV-KIT-N8 (Waveshare) ou ESP32-C3 SuperMini
 - 4 modules LED 8x8 a MAX7219 (ref. 1288BB) chaines en serie -> affichage 32x8
 - Heure recuperee par NTP (fuseau horaire POSIX, gestion auto heure ete/hiver)
 - Portail Wi-Fi + interface web embarquee pour toute la configuration
@@ -12,21 +12,21 @@ Chainez les 4 modules : `DOUT` du module 1 -> `DIN` du module 2, etc. Seul le
 premier module recoit `DIN`/`CLK`/`CS` de l'ESP32 ; les 4 modules partagent
 `VCC` et `GND`.
 
-| Module (1er de la chaine) | ESP32-C6-DEV-KIT-N8 |
-|---|---|
-| VCC | 5V (voir remarque alimentation) |
-| GND | GND |
-| DIN | GPIO18 |
-| CS / LOAD | GPIO20 |
-| CLK | GPIO19 |
+| Module (1er de la chaine) | ESP32-C6-DEV-KIT-N8 | ESP32-C3 SuperMini |
+|---|---|---|
+| VCC | 5V (voir remarque alimentation) | 5V (voir remarque alimentation) |
+| GND | GND | GND |
+| DIN | GPIO18 | GPIO6 |
+| CS / LOAD | GPIO20 | GPIO10 |
+| CLK | GPIO19 | GPIO4 |
 
 Ces broches sont definies en haut de [`include/config.h`](include/config.h)
-(`MATRIX_DIN_PIN`, `MATRIX_CLK_PIN`, `MATRIX_CS_PIN`) — modifiez-les si votre
-cablage differe. Elles ont ete choisies car libres sur le header et en dehors
-des broches de strapping/boot (GPIO4, 5, 8, 9, 15) et de l'USB-JTAG
-(GPIO12/13). **Verifiez tout de meme le pinout imprime sur votre carte /
-le schema Waveshare** avant de cabler, les silkscreens peuvent varier
-legerement d'une revision a l'autre.
+(`MATRIX_DIN_PIN`, `MATRIX_CLK_PIN`, `MATRIX_CS_PIN`, un jeu par carte) —
+modifiez-les si votre cablage differe. Elles ont ete choisies car libres sur
+le header et en dehors des broches de strapping/boot (C6 : GPIO4, 5, 8, 9, 15 ;
+C3 : GPIO2, 8, 9) et de l'USB (C6 : GPIO12/13 ; C3 : GPIO18/19).
+**Verifiez tout de meme le pinout imprime sur votre carte** avant de cabler,
+les silkscreens peuvent varier legerement d'une revision a l'autre.
 
 ### Sonde de temperature (optionnelle)
 
@@ -34,12 +34,12 @@ Un module **BME280** ou **BMP280** en I2C (adresse 0x76 ou 0x77) permet
 d'afficher la temperature. Sans sonde, le firmware fonctionne normalement et
 la temperature n'est simplement pas affichee.
 
-| Module | ESP32-C6-DEV-KIT-N8 |
-|---|---|
-| VCC | **3V3** (pas le 5V) |
-| GND | GND |
-| SDA | GPIO23 |
-| SCL | GPIO22 |
+| Module | ESP32-C6-DEV-KIT-N8 | ESP32-C3 SuperMini |
+|---|---|---|
+| VCC | **3V3** (pas le 5V) | **3V3** (pas le 5V) |
+| GND | GND | GND |
+| SDA | GPIO23 | GPIO0 |
+| SCL | GPIO22 | GPIO1 |
 
 Broches modifiables dans [`include/config.h`](include/config.h)
 (`SENSOR_SDA_PIN`, `SENSOR_SCL_PIN`). La sonde est detectee au demarrage :
@@ -74,14 +74,34 @@ la rotation 180 degres de tout l'ecran, ordre des modules compris.
 Ce projet est pret a l'emploi avec [PlatformIO](https://platformio.org/)
 (extension VS Code, ou CLI `pip install platformio`).
 
+Deux environnements sont definis dans `platformio.ini` :
+`esp32-c3-supermini` (environnement par defaut, `default_envs`) et
+`esp32-c6-devkitc-1`.
+
 ```bash
-pio run -t upload
+pio run -t upload                      # carte par defaut (C3 SuperMini)
+pio run -e esp32-c6-devkitc-1 -t upload  # ESP32-C6
 pio device monitor
 ```
 
 Au premier lancement, PlatformIO telecharge automatiquement le toolchain
-ESP32-C6 et les librairies listees dans `platformio.ini`
+et les librairies listees dans `platformio.ini`
 (MD_Parola, MD_MAX72XX, ArduinoJson).
+
+Sur le **C3 SuperMini**, le port serie passe par l'USB natif (active par
+`ARDUINO_USB_CDC_ON_BOOT`). Si le port COM n'apparait pas au flash, maintenez
+le bouton BOOT (GPIO9) en branchant la carte pour passer en mode bootloader.
+
+### Compilation sur GitHub (sans toolchain local)
+
+Le workflow [`.github/workflows/build.yml`](.github/workflows/build.yml)
+compile les deux cartes a chaque push. Telechargez l'artefact
+`firmware-<carte>` dans l'onglet *Actions*, puis ecrivez
+`firmware.factory.bin` a l'adresse `0x0` :
+
+```bash
+python -m esptool --chip esp32c3 write-flash 0x0 firmware.factory.bin
+```
 
 ## 3. Premiere configuration (portail Wi-Fi)
 
@@ -142,7 +162,8 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
 ## 5. Structure du projet
 
 ```
-platformio.ini        Configuration PlatformIO (carte, librairies)
+platformio.ini        Configuration PlatformIO (cartes C3/C6, librairies)
+.github/workflows/     Compilation automatique (GitHub Actions)
 include/config.h       Broches, reglages par defaut, structure AppConfig
 src/
   config.cpp            Sauvegarde/chargement des reglages (NVS/Preferences)
