@@ -134,6 +134,16 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   </div>
 
   <div class="card">
+    <h2>Broches (GPIO)</h2>
+    <div class="row"><label>Matrice — DIN</label><input type="number" id="dinPin" min="0" max="48"></div>
+    <div class="row"><label>Matrice — CLK</label><input type="number" id="clkPin" min="0" max="48"></div>
+    <div class="row"><label>Matrice — CS</label><input type="number" id="csPin" min="0" max="48"></div>
+    <div class="row"><label>Sonde — SDA</label><input type="number" id="sdaPin" min="0" max="48"></div>
+    <div class="row"><label>Sonde — SCL</label><input type="number" id="sclPin" min="0" max="48"></div>
+    <small class="hint">Numeros de GPIO (pas les numeros de broches du connecteur). Les 5 doivent etre differentes ; evitez les broches de strapping/boot et celles reservees a l'USB ou a la flash interne (voir le README). Enregistrer un changement redemarre la carte.</small>
+  </div>
+
+  <div class="card">
     <h2>Mode nuit</h2>
     <div class="switch-row"><span>Activer le mode nuit</span><input type="checkbox" id="nightOn"></div>
     <div class="row"><label>Debut</label><input type="time" id="nightStart"></div>
@@ -200,6 +210,11 @@ async function loadConfig() {
   document.getElementById('flip').checked = c.flip;
   document.getElementById('hwType').value = c.hwType;
   document.getElementById('bootIp').checked = c.bootIp;
+  document.getElementById('dinPin').value = c.dinPin;
+  document.getElementById('clkPin').value = c.clkPin;
+  document.getElementById('csPin').value = c.csPin;
+  document.getElementById('sdaPin').value = c.sdaPin;
+  document.getElementById('sclPin').value = c.sclPin;
   document.getElementById('showTemp').checked = c.showTemp;
   document.getElementById('tempOff').value = c.tempOff;
   document.getElementById('nightOn').checked = c.nightOn;
@@ -266,6 +281,11 @@ async function saveConfig() {
     flip: document.getElementById('flip').checked,
     hwType: parseInt(document.getElementById('hwType').value, 10),
     bootIp: document.getElementById('bootIp').checked,
+    dinPin: parseInt(document.getElementById('dinPin').value, 10),
+    clkPin: parseInt(document.getElementById('clkPin').value, 10),
+    csPin: parseInt(document.getElementById('csPin').value, 10),
+    sdaPin: parseInt(document.getElementById('sdaPin').value, 10),
+    sclPin: parseInt(document.getElementById('sclPin').value, 10),
     showTemp: document.getElementById('showTemp').checked,
     tempOff: parseFloat(document.getElementById('tempOff').value) || 0,
     nightOn: document.getElementById('nightOn').checked,
@@ -276,10 +296,14 @@ async function saveConfig() {
   };
   const r = await fetch('/api/config', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
   if (r.ok) {
-    toast('Enregistre. Redemarrage si le Wi-Fi ou l\'orientation a change...');
+    toast('Enregistre. Redemarrage si le Wi-Fi, l\'orientation ou une broche a change...');
     document.getElementById('pass').value = '';
     setTimeout(loadStatus, 3000);
-  } else toast('Erreur lors de l\'enregistrement');
+  } else {
+    let msg = 'Erreur lors de l\'enregistrement';
+    try { const j = await r.json(); if (j.error) msg = j.error; } catch (e) { /* ignore */ }
+    toast(msg);
+  }
 }
 
 async function reboot() {

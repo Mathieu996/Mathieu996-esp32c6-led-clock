@@ -60,7 +60,7 @@ static bool probe(uint8_t addr) {
 }
 
 void sensorBegin() {
-  Wire.begin(SENSOR_SDA_PIN, SENSOR_SCL_PIN);
+  Wire.begin(gConfig.sensorSdaPin, gConfig.sensorSclPin);
   present = probe(0x76) || probe(0x77);
   if (!present) Serial.println("[Sonde] Aucune sonde BME280/BMP280 detectee (temperature desactivee).");
 }

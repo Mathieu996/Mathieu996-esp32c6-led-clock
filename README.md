@@ -20,13 +20,18 @@ premier module recoit `DIN`/`CLK`/`CS` de l'ESP32 ; les 4 modules partagent
 | CS / LOAD | GPIO20 | GPIO10 |
 | CLK | GPIO19 | GPIO4 |
 
-Ces broches sont definies en haut de [`include/config.h`](include/config.h)
-(`MATRIX_DIN_PIN`, `MATRIX_CLK_PIN`, `MATRIX_CS_PIN`, un jeu par carte) —
-modifiez-les si votre cablage differe. Elles ont ete choisies car libres sur
-le header et en dehors des broches de strapping/boot (C6 : GPIO4, 5, 8, 9, 15 ;
-C3 : GPIO2, 8, 9) et de l'USB (C6 : GPIO12/13 ; C3 : GPIO18/19).
-**Verifiez tout de meme le pinout imprime sur votre carte** avant de cabler,
-les silkscreens peuvent varier legerement d'une revision a l'autre.
+Ces broches sont les valeurs par defaut, definies en haut de
+[`include/config.h`](include/config.h) (`DEFAULT_MATRIX_DIN_PIN`,
+`DEFAULT_MATRIX_CLK_PIN`, `DEFAULT_MATRIX_CS_PIN`, un jeu par carte) —
+elles ont ete choisies car libres sur le header et en dehors des broches de
+strapping/boot (C6 : GPIO4, 5, 8, 9, 15 ; C3 : GPIO2, 8, 9) et de l'USB
+(C6 : GPIO12/13 ; C3 : GPIO18/19). **Verifiez tout de meme le pinout imprime
+sur votre carte** avant de cabler, les silkscreens peuvent varier legerement
+d'une revision a l'autre.
+
+**Modifiables sans recompiler**, depuis la carte **Broches (GPIO)** de
+l'interface web (voir section 4) : pratique si votre cablage differe ou si
+vous changez de carte. La carte redemarre automatiquement au changement.
 
 ### Sonde de temperature (optionnelle)
 
@@ -41,9 +46,11 @@ la temperature n'est simplement pas affichee.
 | SDA | GPIO23 | GPIO0 |
 | SCL | GPIO22 | GPIO1 |
 
-Broches modifiables dans [`include/config.h`](include/config.h)
-(`SENSOR_SDA_PIN`, `SENSOR_SCL_PIN`). La sonde est detectee au demarrage :
-redemarrez la carte apres l'avoir branchee. Eloignez-la de l'ESP32 et des
+Broches par defaut dans [`include/config.h`](include/config.h)
+(`DEFAULT_SENSOR_SDA_PIN`, `DEFAULT_SENSOR_SCL_PIN`), modifiables comme
+celles de la matrice depuis la carte **Broches (GPIO)** de l'interface web.
+La sonde est detectee au demarrage : redemarrez la carte apres l'avoir
+branchee (ou apres avoir change ses broches). Eloignez-la de l'ESP32 et des
 matrices LED, qui chauffent ; le reglage **Correction temp.** de l'interface
 web permet d'ajuster la valeur affichee.
 
@@ -168,6 +175,9 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
   pendant laquelle la luminosite passe a un niveau de nuit (0-15), ou
   l'affichage s'eteint completement. Actif par defaut de 22:00 a 07:00, au
   niveau 0. Sans heure NTP, l'affichage reste en luminosite normale.
+- **Broches (GPIO)** : DIN/CLK/CS de la matrice et SDA/SCL de la sonde. Les 5
+  doivent etre differentes ; toute modification redemarre la carte pour
+  reinitialiser la matrice et le bus I2C avec les nouvelles broches.
 - **Systeme** : redemarrage, reinitialisation usine, statut (IP, heure,
   etat NTP, uptime, version).
 - **Mise a jour du firmware** : televersement OTA d'un fichier `.bin`

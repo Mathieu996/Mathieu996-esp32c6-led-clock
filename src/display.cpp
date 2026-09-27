@@ -231,7 +231,8 @@ static void applyBrightness() {
 
 // ---------------------------------------------------------------------------
 void displayInit() {
-  P = new MD_Parola(HW_TYPES[gConfig.hwType & 7], MATRIX_DIN_PIN, MATRIX_CLK_PIN, MATRIX_CS_PIN, MATRIX_COUNT);
+  P = new MD_Parola(HW_TYPES[gConfig.hwType & 7], gConfig.matrixDinPin, gConfig.matrixClkPin,
+                     gConfig.matrixCsPin, MATRIX_COUNT);
   P->begin();
   P->addChar(':', COLON_GLYPH);
   displayApplySettings();

@@ -129,6 +129,11 @@ static void handleGetConfig() {
   doc["flip"] = gConfig.flipDisplay;
   doc["hwType"] = gConfig.hwType;
   doc["bootIp"] = gConfig.showIpAtBoot;
+  doc["dinPin"] = gConfig.matrixDinPin;
+  doc["clkPin"] = gConfig.matrixClkPin;
+  doc["csPin"] = gConfig.matrixCsPin;
+  doc["sdaPin"] = gConfig.sensorSdaPin;
+  doc["sclPin"] = gConfig.sensorSclPin;
   doc["showTemp"] = gConfig.showTemp;
   doc["tempOff"] = gConfig.tempOffset;
   doc["nightOn"] = gConfig.nightEnabled;
@@ -141,6 +146,21 @@ static void handleGetConfig() {
   server.send(200, "application/json", out);
 }
 
+// Verifie les 5 broches (matrice + sonde) avant de les enregistrer : bornes
+// larges (0-48, couvre tous les ESP32), pas de doublon entre elles, et pas le
+// bouton BOOT. Renvoie nullptr si tout va bien, sinon un message d'erreur.
+static const char *validatePins(int dinPin, int clkPin, int csPin, int sdaPin, int sclPin) {
+  const int pins[5] = {dinPin, clkPin, csPin, sdaPin, sclPin};
+  for (int p : pins) {
+    if (p < 0 || p > 48) return "broche hors limites (0-48)";
+    if (p == BOOT_BUTTON_PIN) return "broche reservee au bouton BOOT";
+  }
+  for (int i = 0; i < 5; i++)
+    for (int j = i + 1; j < 5; j++)
+      if (pins[i] == pins[j]) return "les 5 broches doivent etre toutes differentes";
+  return nullptr;
+}
+
 static void handlePostConfig() {
   if (!server.hasArg("plain")) {
     server.send(400, "application/json", "{\"ok\":false,\"error\":\"body manquant\"}");
@@ -151,6 +171,34 @@ static void handlePostConfig() {
   if (err) {
     server.send(400, "application/json", "{\"ok\":false,\"error\":\"json invalide\"}");
     return;
+  }
+
+  // Broches : validees avant tout le reste, et rien n'est enregistre si elles
+  // sont invalides (contrairement aux autres reglages, bornes individuellement).
+  bool pinsProvided = !doc["dinPin"].isNull() || !doc["clkPin"].isNull() || !doc["csPin"].isNull() ||
+                      !doc["sdaPin"].isNull() || !doc["sclPin"].isNull();
+  bool pinsChanged = false;
+  if (pinsProvided) {
+    int dinPin = doc["dinPin"].isNull() ? gConfig.matrixDinPin : (int)doc["dinPin"];
+    int clkPin = doc["clkPin"].isNull() ? gConfig.matrixClkPin : (int)doc["clkPin"];
+    int csPin  = doc["csPin"].isNull()  ? gConfig.matrixCsPin  : (int)doc["csPin"];
+    int sdaPin = doc["sdaPin"].isNull() ? gConfig.sensorSdaPin : (int)doc["sdaPin"];
+    int sclPin = doc["sclPin"].isNull() ? gConfig.sensorSclPin : (int)doc["sclPin"];
+
+    const char *pinErr = validatePins(dinPin, clkPin, csPin, sdaPin, sclPin);
+    if (pinErr) {
+      String out = String("{\"ok\":false,\"error\":\"") + pinErr + "\"}";
+      server.send(400, "application/json", out);
+      return;
+    }
+    pinsChanged = (dinPin != gConfig.matrixDinPin || clkPin != gConfig.matrixClkPin ||
+                   csPin != gConfig.matrixCsPin || sdaPin != gConfig.sensorSdaPin ||
+                   sclPin != gConfig.sensorSclPin);
+    gConfig.matrixDinPin = dinPin;
+    gConfig.matrixClkPin = clkPin;
+    gConfig.matrixCsPin = csPin;
+    gConfig.sensorSdaPin = sdaPin;
+    gConfig.sensorSclPin = sclPin;
   }
 
   bool wifiChanged = false;
@@ -205,7 +253,7 @@ static void handlePostConfig() {
 
   server.send(200, "application/json", "{\"ok\":true}");
 
-  if (wifiChanged || hwChanged) scheduleRestart(1500); // laisse le temps a la reponse HTTP de partir
+  if (wifiChanged || hwChanged || pinsChanged) scheduleRestart(1500); // laisse le temps a la reponse HTTP de partir
 }
 
 static void handleWifiScan() {

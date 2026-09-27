@@ -26,6 +26,12 @@ void configLoad(AppConfig &cfg) {
   cfg.hwType            = prefs.getUChar("hwtype", DEFAULT_HW_TYPE_INDEX) & 7;
   cfg.showIpAtBoot      = prefs.getBool("bootip", true);
 
+  cfg.matrixDinPin      = prefs.getUChar("dinpin", DEFAULT_MATRIX_DIN_PIN);
+  cfg.matrixClkPin      = prefs.getUChar("clkpin", DEFAULT_MATRIX_CLK_PIN);
+  cfg.matrixCsPin       = prefs.getUChar("cspin", DEFAULT_MATRIX_CS_PIN);
+  cfg.sensorSdaPin      = prefs.getUChar("sdapin", DEFAULT_SENSOR_SDA_PIN);
+  cfg.sensorSclPin      = prefs.getUChar("sclpin", DEFAULT_SENSOR_SCL_PIN);
+
   cfg.showTemp         = prefs.getBool("showtemp", true);
   cfg.tempOffset        = prefs.getFloat("tempoff", 0.0f);
   cfg.nightEnabled      = prefs.getBool("nighton", true);
@@ -56,6 +62,12 @@ void configSave(const AppConfig &cfg) {
   prefs.putBool("flip", cfg.flipDisplay);
   prefs.putUChar("hwtype", cfg.hwType);
   prefs.putBool("bootip", cfg.showIpAtBoot);
+
+  prefs.putUChar("dinpin", cfg.matrixDinPin);
+  prefs.putUChar("clkpin", cfg.matrixClkPin);
+  prefs.putUChar("cspin", cfg.matrixCsPin);
+  prefs.putUChar("sdapin", cfg.sensorSdaPin);
+  prefs.putUChar("sclpin", cfg.sensorSclPin);
 
   prefs.putBool("showtemp", cfg.showTemp);
   prefs.putFloat("tempoff", cfg.tempOffset);

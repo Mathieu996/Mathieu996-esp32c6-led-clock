@@ -8,24 +8,29 @@
 // module 2, etc.) en "software SPI" (n'importe quelles broches libres) :
 //   VCC  -> 5V (les 4 modules chaines consomment jusqu'a ~1A a pleine luminosite)
 //   GND  -> GND (commun avec l'ESP32)
-//   DIN  -> voir MATRIX_DIN_PIN  (entree donnees du 1er module)
-//   CS   -> voir MATRIX_CS_PIN   (LOAD/CS, relie a tous les modules)
-//   CLK  -> voir MATRIX_CLK_PIN  (horloge, reliee a tous les modules)
+//   DIN  -> voir DEFAULT_MATRIX_DIN_PIN  (entree donnees du 1er module)
+//   CS   -> voir DEFAULT_MATRIX_CS_PIN   (LOAD/CS, relie a tous les modules)
+//   CLK  -> voir DEFAULT_MATRIX_CLK_PIN  (horloge, reliee a tous les modules)
+//
+// Ce sont uniquement les valeurs par defaut (premier demarrage / apres
+// reinitialisation usine) : reglables ensuite depuis l'interface web, carte
+// "Broches (GPIO)" (redemarrage automatique au changement). Voir AppConfig
+// ci-dessous et le README.
 //
 // Les broches dependent de la carte (choisie par l'environnement PlatformIO).
 // Verifiez le silkscreen de votre carte et ajustez si necessaire.
 #if CONFIG_IDF_TARGET_ESP32C3
 // ESP32-C3 SuperMini : hors broches de strapping (GPIO2, 8, 9) et hors USB
 // (GPIO18/19).
-#define MATRIX_DIN_PIN   6
-#define MATRIX_CLK_PIN   4
-#define MATRIX_CS_PIN    10
+#define DEFAULT_MATRIX_DIN_PIN   6
+#define DEFAULT_MATRIX_CLK_PIN   4
+#define DEFAULT_MATRIX_CS_PIN    10
 #else
 // ESP32-C6-DEV-KIT-N8 : libres sur le header et hors broches de strapping/boot
 // (GPIO4, 5, 8, 9, 15) et hors USB-JTAG (GPIO12/13).
-#define MATRIX_DIN_PIN   18
-#define MATRIX_CLK_PIN   19
-#define MATRIX_CS_PIN    20
+#define DEFAULT_MATRIX_DIN_PIN   18
+#define DEFAULT_MATRIX_CLK_PIN   19
+#define DEFAULT_MATRIX_CS_PIN    20
 #endif
 
 // Nombre de modules 8x8 chaines (4 modules -> affichage 32x8)
@@ -44,19 +49,21 @@
 // Sonde de temperature I2C BME280 / BMP280 (optionnelle : sans sonde, la
 // temperature n'est simplement pas affichee).
 //   VCC -> 3V3 (PAS le 5V), GND -> GND, SDA/SCL -> broches ci-dessous.
-// ESP32-C6 : broches I2C par defaut de la carte (GPIO22/23).
+// Valeurs par defaut uniquement (reglables ensuite depuis l'interface web,
+// voir ci-dessus). ESP32-C6 : broches I2C par defaut de la carte (GPIO22/23).
 // ESP32-C3 (SuperMini) : ces GPIO n'existent pas (0 a 21 seulement), on
 // utilise GPIO0/1, libres et hors strapping (2, 8, 9) et USB (18, 19).
 #if CONFIG_IDF_TARGET_ESP32C3
-#define SENSOR_SDA_PIN   0
-#define SENSOR_SCL_PIN   1
+#define DEFAULT_SENSOR_SDA_PIN   0
+#define DEFAULT_SENSOR_SCL_PIN   1
 #else
-#define SENSOR_SDA_PIN   23
-#define SENSOR_SCL_PIN   22
+#define DEFAULT_SENSOR_SDA_PIN   23
+#define DEFAULT_SENSOR_SCL_PIN   22
 #endif
 
 // Bouton BOOT de la carte (GPIO9 sur la plupart des cartes ESP32-C6) :
 // un appui long au demarrage force le mode point d'acces de configuration.
+// Broche fixe (bouton physique), non reglable depuis l'interface web.
 #define BOOT_BUTTON_PIN   9
 
 // ---------------------------------------------------------------------------
@@ -85,6 +92,14 @@ struct AppConfig {
   bool flipDisplay       = false; // rotation 180 degres
   uint8_t hwType         = DEFAULT_HW_TYPE_INDEX; // orientation des modules, 0-7 (redemarrage requis)
   bool showIpAtBoot      = true;  // au demarrage : fait defiler l'adresse IP jusqu'a la synchro NTP
+
+  // Broches GPIO (matrice + sonde), modifiables depuis l'interface web,
+  // carte "Broches" (redemarrage automatique au changement, voir README).
+  uint8_t matrixDinPin   = DEFAULT_MATRIX_DIN_PIN;
+  uint8_t matrixClkPin   = DEFAULT_MATRIX_CLK_PIN;
+  uint8_t matrixCsPin    = DEFAULT_MATRIX_CS_PIN;
+  uint8_t sensorSdaPin   = DEFAULT_SENSOR_SDA_PIN;
+  uint8_t sensorSclPin   = DEFAULT_SENSOR_SCL_PIN;
 
   // Temperature (sonde I2C) : ajoutee au defilement periodique de la date
   bool showTemp          = true;
