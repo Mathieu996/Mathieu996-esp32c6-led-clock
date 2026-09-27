@@ -97,7 +97,9 @@ le bouton BOOT (GPIO9) en branchant la carte pour passer en mode bootloader.
 Les binaires compiles sont disponibles dans la page
 [**Releases**](https://github.com/Mathieu996/Mathieu996-esp32c6-led-clock/releases)
 du depot : telechargez `horloge-led-esp32-c3-supermini.bin` ou
-`horloge-led-esp32-c6.bin`, puis ecrivez-le a l'adresse `0x0` :
+`horloge-led-esp32-c6.bin` (1er flash uniquement — pour une mise a jour
+ulterieure, voir la section [OTA](#5-mise-a-jour-du-firmware-ota)),
+puis ecrivez-le a l'adresse `0x0` :
 
 ```bash
 python -m esptool --chip esp32c3 write-flash 0x0 horloge-led-esp32-c3-supermini.bin
@@ -168,8 +170,42 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
   niveau 0. Sans heure NTP, l'affichage reste en luminosite normale.
 - **Systeme** : redemarrage, reinitialisation usine, statut (IP, heure,
   etat NTP, uptime, version).
+- **Mise a jour du firmware** : televersement OTA d'un fichier `.bin`
+  (voir section suivante).
 
-## 5. Structure du projet
+## 5. Mise a jour du firmware (OTA)
+
+Une fois la carte connectee a votre reseau (mode STA), les mises a jour
+suivantes ne necessitent plus de cable USB : la carte accepte un nouveau
+firmware via l'onglet **Mise a jour du firmware** de l'interface web.
+
+1. Telechargez le fichier `horloge-led-<carte>-ota.bin` correspondant a
+   votre carte depuis la page
+   [**Releases**](https://github.com/Mathieu996/Mathieu996-esp32c6-led-clock/releases)
+   du depot — **pas** le `horloge-led-<carte>.bin` complet qui sert au flash
+   USB initial (il contient aussi le bootloader et la table de partitions,
+   que l'OTA ne doit pas ecraser). Si vous compilez vous-meme, c'est
+   `.pio/build/<carte>/firmware.bin`.
+2. Dans l'onglet **Mise a jour du firmware**, choisissez ce fichier puis
+   cliquez **Televerser et installer**.
+3. Ne fermez pas la page pendant le transfert (jusqu'a une minute selon le
+   Wi-Fi) ; la carte redemarre automatiquement une fois l'installation
+   terminee.
+
+Techniquement : le firmware ecrit le nouveau binaire dans la partition
+applicative OTA inactive (`Update.h`, partitions `app0`/`app1` du schema
+`default` — deja en place, aucune modification de `platformio.ini`
+necessaire) puis bascule dessus au redemarrage. En cas d'echec en cours de
+transfert (fichier invalide, coupure Wi-Fi), la carte redemarre sur le
+firmware actuel sans dommage.
+
+**Limite** : chaque partition OTA fait 1,25 Mo ; le firmware actuel en
+occupe deja ~90 %. Si une future evolution approche la limite, il faudra
+changer de schema de partitions (`board_build.partitions` dans
+`platformio.ini`, ex. `min_spiffs.csv` sur 4 Mo ou passer par un module plus
+grand).
+
+## 6. Structure du projet
 
 ```
 platformio.ini        Configuration PlatformIO (cartes C3/C6, librairies)
@@ -185,7 +221,7 @@ src/
   main.cpp                 setup()/loop()
 ```
 
-## 6. Pistes d'evolution (non incluses)
+## 7. Pistes d'evolution (non incluses)
 
 - Variation automatique de luminosite selon un capteur LDR.
 - Affichage de l'humidite/pression (le BME280 les mesure) ou de la meteo

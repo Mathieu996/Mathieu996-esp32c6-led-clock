@@ -62,6 +62,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   .pill.ok { background:rgba(34,197,94,.15); color:var(--ok); }
   .pill.warn { background:rgba(239,68,68,.15); color:var(--danger); }
   small.hint { color: var(--muted); display:block; margin-top:-4px; margin-bottom:10px; }
+  input[type=file] {
+    flex: 1 1 160px; background:#0c0e13; border:1px solid var(--border); color:var(--text);
+    padding: 8px 10px; border-radius:8px; font-size:.85rem;
+  }
+  #otaBarWrap { background:#0c0e13; border:1px solid var(--border); border-radius:8px; height:10px; margin-top:10px; overflow:hidden; }
+  #otaBar { background:var(--accent2); height:100%; width:0%; transition:width .2s; }
+  #otaStatus { font-size:.85rem; color:var(--muted); margin-top:6px; }
 </style>
 </head>
 <body>
@@ -134,6 +141,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
     <div class="row"><label>Luminosite de nuit</label><input type="range" id="nightBr" min="0" max="15" step="1"><span id="nightBrVal">-</span></div>
     <div class="switch-row"><span>Eteindre completement l'affichage</span><input type="checkbox" id="nightOff"></div>
     <small class="hint">Entre le debut et la fin (minuit compris), la luminosite passe au niveau de nuit, ou l'affichage s'eteint si la case est cochee.</small>
+  </div>
+
+  <div class="card">
+    <h2>Mise a jour du firmware</h2>
+    <div class="row"><label>Fichier .bin</label><input type="file" id="otaFile" accept=".bin"></div>
+    <small class="hint">Televersez le fichier correspondant a votre carte (voir la page "Releases" du depot GitHub). La carte redemarre automatiquement une fois la mise a jour installee.</small>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="uploadFirmware()">Televerser et installer</button>
+    </div>
+    <div id="otaBarWrap" style="display:none"><div id="otaBar"></div></div>
+    <div id="otaStatus"></div>
   </div>
 
   <div class="card actions">
@@ -274,6 +292,40 @@ async function factoryReset() {
   if (!confirm('Reinitialiser tous les reglages (Wi-Fi inclus) ?')) return;
   await fetch('/api/factoryreset', { method: 'POST' });
   toast('Reinitialisation...');
+}
+
+function uploadFirmware() {
+  const input = document.getElementById('otaFile');
+  const barWrap = document.getElementById('otaBarWrap');
+  const bar = document.getElementById('otaBar');
+  const status = document.getElementById('otaStatus');
+  if (!input.files.length) { toast('Choisissez d\'abord un fichier .bin'); return; }
+  if (!confirm('Installer ce firmware ? La carte redemarrera automatiquement, ne fermez pas cette page pendant le transfert.')) return;
+
+  const form = new FormData();
+  form.append('firmware', input.files[0]);
+
+  barWrap.style.display = '';
+  bar.style.width = '0%';
+  status.textContent = 'Envoi en cours...';
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/update');
+  xhr.upload.onprogress = (e) => {
+    if (e.lengthComputable) bar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+  };
+  xhr.onload = () => {
+    if (xhr.status === 200) {
+      status.textContent = 'Mise a jour installee, redemarrage...';
+      toast('Mise a jour installee, redemarrage...');
+      setTimeout(loadStatus, 4000);
+    } else {
+      status.textContent = 'Echec : ' + xhr.responseText;
+      toast('Echec de la mise a jour');
+    }
+  };
+  xhr.onerror = () => { status.textContent = 'Erreur reseau pendant le transfert.'; };
+  xhr.send(form);
 }
 
 loadConfig();

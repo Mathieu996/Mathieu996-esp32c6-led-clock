@@ -60,17 +60,17 @@ jobs:
         run: |
           cp artefacts/firmware-esp32-c3-supermini/firmware.factory.bin horloge-led-esp32-c3-supermini.bin
           cp artefacts/firmware-esp32-c6-devkitc-1/firmware.factory.bin horloge-led-esp32-c6.bin
+          cp artefacts/firmware-esp32-c3-supermini/firmware.bin horloge-led-esp32-c3-supermini-ota.bin
+          cp artefacts/firmware-esp32-c6-devkitc-1/firmware.bin horloge-led-esp32-c6-ota.bin
           cat > notes.md <<'EOF'
           ## Telechargement
 
-          Choisissez le fichier correspondant a votre carte, a ecrire a l'adresse **0x0** :
+          | Carte | 1er flash (USB, cable) | Mise a jour (OTA, interface web) |
+          |---|---|---|
+          | ESP32-C3 SuperMini | `horloge-led-esp32-c3-supermini.bin` | `horloge-led-esp32-c3-supermini-ota.bin` |
+          | ESP32-C6-DEV-KIT-N8 | `horloge-led-esp32-c6.bin` | `horloge-led-esp32-c6-ota.bin` |
 
-          | Carte | Fichier |
-          |---|---|
-          | ESP32-C3 SuperMini | `horloge-led-esp32-c3-supermini.bin` |
-          | ESP32-C6-DEV-KIT-N8 | `horloge-led-esp32-c6.bin` |
-
-          Avec `esptool` (Python) :
+          **1er flash (USB)** : ecrire le fichier a l'adresse **0x0**, avec `esptool` (Python) :
 
           ```
           python -m esptool --chip esp32c3 write-flash 0x0 horloge-led-esp32-c3-supermini.bin
@@ -79,10 +79,16 @@ jobs:
 
           Ou dans le navigateur avec https://espressif.github.io/esptool-js/ (adresse 0x0).
           Si le port n'apparait pas, maintenez le bouton BOOT en branchant la carte.
+
+          **Mise a jour (OTA)** : une fois la carte deja en service et connectee a votre
+          Wi-Fi, televersez le fichier `*-ota.bin` (et non le fichier ci-dessus) depuis
+          l'onglet *Mise a jour du firmware* de son interface web. Voir le README.
           EOF
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
             horloge-led-esp32-c3-supermini.bin \
-            horloge-led-esp32-c6.bin
+            horloge-led-esp32-c6.bin \
+            horloge-led-esp32-c3-supermini-ota.bin \
+            horloge-led-esp32-c6-ota.bin

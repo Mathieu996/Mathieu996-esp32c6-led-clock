@@ -10,6 +10,7 @@
 #include <DNSServer.h>
 #include <ESPmDNS.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include <time.h>
 
 static WebServer server(80);
@@ -17,6 +18,11 @@ static DNSServer dnsServer;
 static bool apMode = false;
 static bool restartPending = false;
 static unsigned long restartAtMs = 0;
+
+// Etat de la mise a jour OTA en cours (rempli par handleUpdateUpload,
+// lu par handleUpdateDone une fois le transfert termine).
+static bool otaHasError = false;
+static String otaErrorMsg;
 
 static const char *CAPTIVE_PROBE_PATHS[] = {
   "/generate_204", "/gen_204", "/ncsi.txt", "/hotspot-detect.html",
@@ -229,6 +235,54 @@ static void handleFactoryReset() {
   scheduleRestart(800);
 }
 
+// Reception du fichier .bin (onglet "Mise a jour" de l'interface web),
+// appelee plusieurs fois par WebServer au fil de la reception.
+static void handleUpdateUpload() {
+  HTTPUpload &upload = server.upload();
+
+  if (upload.status == UPLOAD_FILE_START) {
+    otaHasError = false;
+    otaErrorMsg = "";
+    Serial.printf("[OTA] Reception de \"%s\"...\n", upload.filename.c_str());
+    displayShowStatus("MAJ");
+    // Taille inconnue a l'avance (upload en flux) : on ecrit dans la
+    // partition OTA libre jusqu'a Update.end(), qui echoue si ca deborde.
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+      otaHasError = true;
+      otaErrorMsg = Update.errorString();
+    }
+  } else if (upload.status == UPLOAD_FILE_WRITE) {
+    if (!otaHasError && Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+      otaHasError = true;
+      otaErrorMsg = Update.errorString();
+    }
+  } else if (upload.status == UPLOAD_FILE_END) {
+    if (!otaHasError) {
+      if (Update.end(true)) {
+        Serial.printf("[OTA] Ecrit %u octets, redemarrage...\n", upload.totalSize);
+      } else {
+        otaHasError = true;
+        otaErrorMsg = Update.errorString();
+      }
+    }
+  } else if (upload.status == UPLOAD_FILE_ABORTED) {
+    Update.abort();
+    otaHasError = true;
+    otaErrorMsg = "Televersement interrompu";
+  }
+}
+
+// Reponse finale, envoyee une fois handleUpdateUpload() termine.
+static void handleUpdateDone() {
+  if (otaHasError) {
+    Serial.printf("[OTA] Echec : %s\n", otaErrorMsg.c_str());
+    server.send(500, "text/plain", otaErrorMsg.length() ? otaErrorMsg : "Erreur inconnue");
+    return;
+  }
+  server.send(200, "text/plain", "OK");
+  scheduleRestart(1000); // laisse le temps a la reponse HTTP de partir
+}
+
 static void handleNotFound() {
   if (apMode) {
     for (auto path : CAPTIVE_PROBE_PATHS) {
@@ -263,6 +317,7 @@ void webPortalBegin() {
   server.on("/api/wifiscan", HTTP_GET, handleWifiScan);
   server.on("/api/reboot", HTTP_POST, handleReboot);
   server.on("/api/factoryreset", HTTP_POST, handleFactoryReset);
+  server.on("/api/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);
   server.onNotFound(handleNotFound);
   server.begin();
   Serial.println("[HTTP] Serveur web demarre sur le port 80");
