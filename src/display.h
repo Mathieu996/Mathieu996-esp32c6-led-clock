@@ -21,6 +21,20 @@ void displayShowStatus(const char *msg);
 // de reglage.
 void displayStartBootSequence(const char *text, bool untilTimeSynced);
 
+// Fait defiler `text` une seule fois, de facon BLOQUANTE (a utiliser
+// uniquement dans setup(), avant que la boucle principale ne tourne).
+// maxMs borne le blocage par securite.
+void displayScrollOnceBlocking(const char *text, unsigned long maxMs = 15000);
+
+// Fait defiler un texte personnalise (interface web), une seule fois (retour
+// automatique a l'affichage normal) ou en boucle (jusqu'a l'appel de
+// displayStopCustomText()). Non bloquant, utilisable depuis la boucle
+// principale.
+void displayShowCustomText(const char *text, bool loop);
+
+// Arrete un defilement de texte personnalise en cours (sans effet sinon).
+void displayStopCustomText();
+
 // Passe au mode d'affichage fixe suivant (Heure -> Date -> Temperature,
 // sans defilement ; Temperature sautee si aucune sonde). Appelee par le
 // bouton tactile (appui court).

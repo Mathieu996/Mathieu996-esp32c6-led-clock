@@ -273,6 +273,37 @@ static void handlePostConfig() {
   if (wifiChanged || hwChanged || pinsChanged) scheduleRestart(1500); // laisse le temps a la reponse HTTP de partir
 }
 
+// Texte personnalise (carte "Texte personnalise" de l'interface web) :
+// {"text":"...", "loop":bool} pour lancer un defilement, ou {"stop":true}
+// pour l'arreter. N'est pas sauvegarde (effet immediat, non persistant).
+static void handleCustomText() {
+  if (!server.hasArg("plain")) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"body manquant\"}");
+    return;
+  }
+  JsonDocument doc;
+  if (deserializeJson(doc, server.arg("plain"))) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"json invalide\"}");
+    return;
+  }
+
+  bool stop = !doc["stop"].isNull() && (bool)doc["stop"];
+  if (stop) {
+    displayStopCustomText();
+    server.send(200, "application/json", "{\"ok\":true}");
+    return;
+  }
+
+  const char *text = doc["text"] | "";
+  if (strlen(text) == 0) {
+    server.send(400, "application/json", "{\"ok\":false,\"error\":\"texte vide\"}");
+    return;
+  }
+  bool loop = !doc["loop"].isNull() && (bool)doc["loop"];
+  displayShowCustomText(text, loop);
+  server.send(200, "application/json", "{\"ok\":true}");
+}
+
 static void handleWifiScan() {
   int n = WiFi.scanNetworks();
   JsonDocument doc;
@@ -380,6 +411,7 @@ void webPortalBegin() {
   server.on("/api/config", HTTP_GET, handleGetConfig);
   server.on("/api/config", HTTP_POST, handlePostConfig);
   server.on("/api/wifiscan", HTTP_GET, handleWifiScan);
+  server.on("/api/customtext", HTTP_POST, handleCustomText);
   server.on("/api/reboot", HTTP_POST, handleReboot);
   server.on("/api/factoryreset", HTTP_POST, handleFactoryReset);
   server.on("/api/update", HTTP_POST, handleUpdateDone, handleUpdateUpload);

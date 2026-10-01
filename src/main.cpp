@@ -39,6 +39,10 @@ void setup() {
 
   checkFactoryResetButton();
 
+  // Banniere de demarrage (une seule fois, bloquant : rien d'autre a faire
+  // avant que le Wi-Fi ne se connecte). Affichee avant l'adresse IP.
+  displayScrollOnceBlocking(("Horloge LED v" FIRMWARE_VERSION));
+
   webPortalBegin();
   timeSyncStart();
 

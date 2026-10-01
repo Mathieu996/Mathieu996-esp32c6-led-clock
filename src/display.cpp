@@ -24,7 +24,7 @@ static const MD_MAX72XX::moduleType_t HW_TYPES[8] = {
 // lignes 1-2 et 4-5. Format d'un caractere de police : largeur, puis colonnes.
 static const uint8_t COLON_GLYPH[] = { 2, 0x36, 0x36 };
 
-enum DisplayMode : uint8_t { DM_STATIC_CLOCK, DM_SCROLLING, DM_BOOT };
+enum DisplayMode : uint8_t { DM_STATIC_CLOCK, DM_SCROLLING, DM_BOOT, DM_CUSTOM };
 static DisplayMode dispMode = DM_STATIC_CLOCK;
 static bool bootWaitSync = false;
 static unsigned long bootStartedAt = 0;
@@ -45,6 +45,10 @@ static FixedView currentView = VIEW_CLOCK;
 // Extinction manuelle (bouton tactile, appui long), independante du mode
 // nuit. Non sauvegardee : repart allumee a chaque demarrage.
 static bool manualOff = false;
+
+// Texte personnalise (interface web, carte "Texte personnalise") : vrai si
+// le defilement en cours doit se repeter indefiniment (sinon une seule fois).
+static bool customLoop = false;
 
 // ---------------------------------------------------------------------------
 // Heure fixe avec secondes : HH:MM en chiffres 4x7 sur les 3 premiers
@@ -310,6 +314,34 @@ void displayStartBootSequence(const char *text, bool untilTimeSynced) {
   applyBrightness();
 }
 
+// Fait defiler `text` une seule fois, de facon bloquante (boucle sur
+// displayAnimate() jusqu'a la fin du passage). Reservee a setup(), avant que
+// la boucle principale ne tourne : par ex. la banniere "Horloge LED vX.Y.Z"
+// affichee avant la sequence IP/AP. maxMs borne le blocage si l'animation ne
+// se termine jamais (securite, ne devrait pas arriver en usage normal).
+void displayScrollOnceBlocking(const char *text, unsigned long maxMs) {
+  startScroll(text);
+  unsigned long start = millis();
+  while (!P->displayAnimate()) {
+    if (millis() - start >= maxMs) break;
+  }
+  resumeClock();
+}
+
+// Texte personnalise (interface web) : defile une fois (retour automatique
+// a l'affichage normal) ou en boucle (jusqu'a displayStopCustomText()).
+// Interrompt sans probleme tout defilement/mode en cours (date, boot, etc.).
+void displayShowCustomText(const char *text, bool loop) {
+  customLoop = loop;
+  startScroll(text);
+  dispMode = DM_CUSTOM; // startScroll() a mis DM_SCROLLING
+  applyBrightness();
+}
+
+void displayStopCustomText() {
+  if (dispMode == DM_CUSTOM) resumeClock();
+}
+
 void displayLoop() {
   unsigned long now = millis();
 
@@ -339,6 +371,14 @@ void displayLoop() {
     if (P->displayAnimate()) { // fin du defilement de la date
       lastDateShown = now;
       resumeClock();
+    }
+    return;
+  }
+
+  if (dispMode == DM_CUSTOM) {
+    if (P->displayAnimate()) { // un passage complet du texte personnalise est termine
+      if (customLoop) P->displayReset(); // meme texte, on recommence
+      else resumeClock();
     }
     return;
   }

@@ -134,6 +134,17 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   </div>
 
   <div class="card">
+    <h2>Texte personnalise</h2>
+    <div class="row"><label>Texte</label><input type="text" id="customText" maxlength="47" placeholder="Ex: JOYEUX ANNIVERSAIRE"></div>
+    <div class="switch-row"><span>Defilement en boucle (sinon une seule fois)</span><input type="checkbox" id="customLoop"></div>
+    <div class="actions">
+      <button type="button" class="secondary" onclick="showCustomText()">Afficher</button>
+      <button type="button" class="secondary" onclick="stopCustomText()">Arreter</button>
+    </div>
+    <small class="hint">La police de la matrice n'affiche pas les accents : preferez les majuscules sans accent. "Une seule fois" revient automatiquement a l'affichage normal a la fin du defilement ; ce reglage n'est pas sauvegarde (repart a l'heure au redemarrage).</small>
+  </div>
+
+  <div class="card">
     <h2>Broches (GPIO)</h2>
     <div class="row"><label>Matrice — DIN</label><input type="number" id="dinPin" min="0" max="48"></div>
     <div class="row"><label>Matrice — CLK</label><input type="number" id="clkPin" min="0" max="48"></div>
@@ -274,6 +285,19 @@ async function scanWifi() {
     });
     if (nets.length === 0) list.innerHTML = 'Aucun reseau trouve.';
   } catch (e) { list.innerHTML = 'Erreur de scan.'; }
+}
+
+async function showCustomText() {
+  const text = document.getElementById('customText').value.trim();
+  if (!text) { toast('Saisissez un texte'); return; }
+  const loop = document.getElementById('customLoop').checked;
+  const r = await fetch('/api/customtext', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ text, loop }) });
+  toast(r.ok ? 'Affichage en cours...' : 'Erreur lors de l\'affichage');
+}
+
+async function stopCustomText() {
+  await fetch('/api/customtext', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ stop: true }) });
+  toast('Arrete.');
 }
 
 async function saveConfig() {

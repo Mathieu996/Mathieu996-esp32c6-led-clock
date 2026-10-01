@@ -162,6 +162,12 @@ reseau, a l'adresse affichee sur le port serie, ou via
 `http://horloge.local/` (mDNS ; nom modifiable dans `config.h`,
 `DEFAULT_HOSTNAME`).
 
+### Sequence de demarrage
+
+A chaque demarrage, "Horloge LED v" suivi de la version du firmware
+(`FIRMWARE_VERSION`) defile une fois, avant le reste de la sequence
+ci-dessous. Non desactivable (bref et sans reglage associe).
+
 ### Adresse IP au demarrage
 
 Par defaut, l'adresse IP de la carte defile en clair au demarrage
@@ -187,6 +193,10 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
   a droite du dernier ; en 12h, sans AM/PM dans ce mode), defilement periodique de la
   date suivie de la temperature (si sonde), correction de temperature,
   rotation 180 degres, affichage de l'adresse IP au demarrage.
+- **Texte personnalise** : saisissez un texte et cliquez **Afficher** pour le
+  faire defiler sur l'horloge, une seule fois (retour automatique a l'heure)
+  ou en boucle (jusqu'au clic sur **Arreter**). Non sauvegarde : repart sur
+  l'heure au redemarrage. La police de la matrice n'a pas d'accents.
 - **Mode nuit** : plage horaire (peut passer minuit, ex. 22:00 -> 07:00)
   pendant laquelle la luminosite passe a un niveau de nuit (0-15), ou
   l'affichage s'eteint completement. Actif par defaut de 22:00 a 07:00, au
