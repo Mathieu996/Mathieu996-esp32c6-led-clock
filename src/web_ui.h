@@ -144,6 +144,13 @@ const char INDEX_HTML[] PROGMEM = R"rawliteral(
   </div>
 
   <div class="card">
+    <h2>Bouton tactile (TTP223)</h2>
+    <div class="switch-row"><span>Activer le bouton tactile</span><input type="checkbox" id="touchOn"></div>
+    <div class="row"><label>Broche</label><input type="number" id="touchPin" min="0" max="48"></div>
+    <small class="hint">Cablage : VCC -> 3V3, GND -> GND, I/O -> broche ci-dessus. Appui court : passe au mode d'affichage fixe suivant (Heure, Date, puis Temperature si une sonde est detectee), sans defilement. Appui long (~1 s) : eteint l'affichage ; un nouvel appui long le rallume. Ce reglage s'applique immediatement, sans redemarrage.</small>
+  </div>
+
+  <div class="card">
     <h2>Mode nuit</h2>
     <div class="switch-row"><span>Activer le mode nuit</span><input type="checkbox" id="nightOn"></div>
     <div class="row"><label>Debut</label><input type="time" id="nightStart"></div>
@@ -215,6 +222,8 @@ async function loadConfig() {
   document.getElementById('csPin').value = c.csPin;
   document.getElementById('sdaPin').value = c.sdaPin;
   document.getElementById('sclPin').value = c.sclPin;
+  document.getElementById('touchOn').checked = c.touchOn;
+  document.getElementById('touchPin').value = c.touchPin;
   document.getElementById('showTemp').checked = c.showTemp;
   document.getElementById('tempOff').value = c.tempOff;
   document.getElementById('nightOn').checked = c.nightOn;
@@ -286,6 +295,8 @@ async function saveConfig() {
     csPin: parseInt(document.getElementById('csPin').value, 10),
     sdaPin: parseInt(document.getElementById('sdaPin').value, 10),
     sclPin: parseInt(document.getElementById('sclPin').value, 10),
+    touchOn: document.getElementById('touchOn').checked,
+    touchPin: parseInt(document.getElementById('touchPin').value, 10),
     showTemp: document.getElementById('showTemp').checked,
     tempOff: parseFloat(document.getElementById('tempOff').value) || 0,
     nightOn: document.getElementById('nightOn').checked,

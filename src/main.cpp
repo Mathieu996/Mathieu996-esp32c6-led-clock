@@ -3,6 +3,7 @@
 #include "display.h"
 #include "sensor.h"
 #include "time_sync.h"
+#include "touch_button.h"
 #include "web_portal.h"
 
 // Maintenir le bouton BOOT enfonce 5s au demarrage reinitialise tous les
@@ -34,6 +35,7 @@ void setup() {
   configLoad(gConfig);
   displayInit();
   sensorBegin();
+  touchButtonBegin();
 
   checkFactoryResetButton();
 
@@ -52,5 +54,6 @@ void setup() {
 void loop() {
   webPortalLoop();
   sensorLoop();
+  touchButtonLoop();
   displayLoop();
 }

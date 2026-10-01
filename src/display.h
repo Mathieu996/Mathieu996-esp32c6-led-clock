@@ -20,3 +20,12 @@ void displayShowStatus(const char *msg);
 // (mode point d'acces, pas d'heure possible) continue jusqu'a un changement
 // de reglage.
 void displayStartBootSequence(const char *text, bool untilTimeSynced);
+
+// Passe au mode d'affichage fixe suivant (Heure -> Date -> Temperature,
+// sans defilement ; Temperature sautee si aucune sonde). Appelee par le
+// bouton tactile (appui court).
+void displayCycleView();
+
+// Bascule l'affichage force eteint/rallume, independamment du mode nuit.
+// Appelee par le bouton tactile (appui long).
+void displayToggleManualOff();

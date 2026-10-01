@@ -66,6 +66,17 @@
 // Broche fixe (bouton physique), non reglable depuis l'interface web.
 #define BOOT_BUTTON_PIN   9
 
+// Bouton tactile TTP223 (optionnel, desactive par defaut : voir
+// AppConfig.touchEnabled, carte "Bouton tactile" de l'interface web).
+// Cablage : VCC -> 3V3, GND -> GND, I/O -> broche ci-dessous (sortie
+// active a l'etat haut, reglages d'usine du module). Valeur par defaut
+// uniquement, reglable comme les autres broches.
+#if CONFIG_IDF_TARGET_ESP32C3
+#define DEFAULT_TOUCH_PIN   3
+#else
+#define DEFAULT_TOUCH_PIN   21
+#endif
+
 // ---------------------------------------------------------------------------
 // Reglages par defaut (modifiables ensuite depuis l'interface web)
 // ---------------------------------------------------------------------------
@@ -100,6 +111,12 @@ struct AppConfig {
   uint8_t matrixCsPin    = DEFAULT_MATRIX_CS_PIN;
   uint8_t sensorSdaPin   = DEFAULT_SENSOR_SDA_PIN;
   uint8_t sensorSclPin   = DEFAULT_SENSOR_SCL_PIN;
+
+  // Bouton tactile TTP223 (optionnel) : appui court = mode d'affichage
+  // suivant (Heure -> Date -> Temperature, fixes) ; appui long = eteint ou
+  // rallume l'affichage. Pas de redemarrage necessaire pour ces 2 reglages.
+  bool touchEnabled     = false;
+  uint8_t touchPin      = DEFAULT_TOUCH_PIN;
 
   // Temperature (sonde I2C) : ajoutee au defilement periodique de la date
   bool showTemp          = true;

@@ -4,6 +4,7 @@
 #include "display.h"
 #include "sensor.h"
 #include "time_sync.h"
+#include "touch_button.h"
 
 #include <WiFi.h>
 #include <WebServer.h>
@@ -134,6 +135,8 @@ static void handleGetConfig() {
   doc["csPin"] = gConfig.matrixCsPin;
   doc["sdaPin"] = gConfig.sensorSdaPin;
   doc["sclPin"] = gConfig.sensorSclPin;
+  doc["touchOn"] = gConfig.touchEnabled;
+  doc["touchPin"] = gConfig.touchPin;
   doc["showTemp"] = gConfig.showTemp;
   doc["tempOff"] = gConfig.tempOffset;
   doc["nightOn"] = gConfig.nightEnabled;
@@ -146,18 +149,18 @@ static void handleGetConfig() {
   server.send(200, "application/json", out);
 }
 
-// Verifie les 5 broches (matrice + sonde) avant de les enregistrer : bornes
-// larges (0-48, couvre tous les ESP32), pas de doublon entre elles, et pas le
-// bouton BOOT. Renvoie nullptr si tout va bien, sinon un message d'erreur.
-static const char *validatePins(int dinPin, int clkPin, int csPin, int sdaPin, int sclPin) {
-  const int pins[5] = {dinPin, clkPin, csPin, sdaPin, sclPin};
-  for (int p : pins) {
-    if (p < 0 || p > 48) return "broche hors limites (0-48)";
-    if (p == BOOT_BUTTON_PIN) return "broche reservee au bouton BOOT";
+// Verifie les broches (matrice + sonde, et la broche tactile si elle est
+// active) avant de les enregistrer : bornes larges (0-48, couvre tous les
+// ESP32), pas de doublon entre elles, et pas le bouton BOOT. Renvoie
+// nullptr si tout va bien, sinon un message d'erreur.
+static const char *validatePins(const int *pins, int count) {
+  for (int i = 0; i < count; i++) {
+    if (pins[i] < 0 || pins[i] > 48) return "broche hors limites (0-48)";
+    if (pins[i] == BOOT_BUTTON_PIN) return "broche reservee au bouton BOOT";
   }
-  for (int i = 0; i < 5; i++)
-    for (int j = i + 1; j < 5; j++)
-      if (pins[i] == pins[j]) return "les 5 broches doivent etre toutes differentes";
+  for (int i = 0; i < count; i++)
+    for (int j = i + 1; j < count; j++)
+      if (pins[i] == pins[j]) return "les broches doivent etre toutes differentes";
   return nullptr;
 }
 
@@ -175,17 +178,24 @@ static void handlePostConfig() {
 
   // Broches : validees avant tout le reste, et rien n'est enregistre si elles
   // sont invalides (contrairement aux autres reglages, bornes individuellement).
+  // La broche tactile n'est incluse dans la verification (unicite) que si le
+  // bouton est/sera active ; dans le cas contraire sa valeur est ignorable.
   bool pinsProvided = !doc["dinPin"].isNull() || !doc["clkPin"].isNull() || !doc["csPin"].isNull() ||
                       !doc["sdaPin"].isNull() || !doc["sclPin"].isNull();
+  bool touchProvided = !doc["touchOn"].isNull() || !doc["touchPin"].isNull();
   bool pinsChanged = false;
-  if (pinsProvided) {
+  bool touchChanged = false;
+  if (pinsProvided || touchProvided) {
     int dinPin = doc["dinPin"].isNull() ? gConfig.matrixDinPin : (int)doc["dinPin"];
     int clkPin = doc["clkPin"].isNull() ? gConfig.matrixClkPin : (int)doc["clkPin"];
     int csPin  = doc["csPin"].isNull()  ? gConfig.matrixCsPin  : (int)doc["csPin"];
     int sdaPin = doc["sdaPin"].isNull() ? gConfig.sensorSdaPin : (int)doc["sdaPin"];
     int sclPin = doc["sclPin"].isNull() ? gConfig.sensorSclPin : (int)doc["sclPin"];
+    bool touchOn  = doc["touchOn"].isNull()  ? gConfig.touchEnabled : (bool)doc["touchOn"];
+    int touchPin  = doc["touchPin"].isNull() ? gConfig.touchPin    : (int)doc["touchPin"];
 
-    const char *pinErr = validatePins(dinPin, clkPin, csPin, sdaPin, sclPin);
+    const int pins[6] = {dinPin, clkPin, csPin, sdaPin, sclPin, touchPin};
+    const char *pinErr = validatePins(pins, touchOn ? 6 : 5);
     if (pinErr) {
       String out = String("{\"ok\":false,\"error\":\"") + pinErr + "\"}";
       server.send(400, "application/json", out);
@@ -194,11 +204,18 @@ static void handlePostConfig() {
     pinsChanged = (dinPin != gConfig.matrixDinPin || clkPin != gConfig.matrixClkPin ||
                    csPin != gConfig.matrixCsPin || sdaPin != gConfig.sensorSdaPin ||
                    sclPin != gConfig.sensorSclPin);
+    touchChanged = (touchOn != gConfig.touchEnabled || touchPin != gConfig.touchPin);
     gConfig.matrixDinPin = dinPin;
     gConfig.matrixClkPin = clkPin;
     gConfig.matrixCsPin = csPin;
     gConfig.sensorSdaPin = sdaPin;
     gConfig.sensorSclPin = sclPin;
+    gConfig.touchEnabled = touchOn;
+    gConfig.touchPin = touchPin;
+    // Pas de redemarrage necessaire pour le bouton tactile : il suffit de
+    // relire le reglage (contrairement a la matrice/sonde, deja initialisees
+    // en dur au demarrage).
+    if (touchChanged) touchButtonApplySettings();
   }
 
   bool wifiChanged = false;

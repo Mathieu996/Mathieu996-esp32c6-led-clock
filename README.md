@@ -54,6 +54,22 @@ branchee (ou apres avoir change ses broches). Eloignez-la de l'ESP32 et des
 matrices LED, qui chauffent ; le reglage **Correction temp.** de l'interface
 web permet d'ajuster la valeur affichee.
 
+### Bouton tactile (optionnel)
+
+Un module **TTP223** permet de changer manuellement ce qui s'affiche, sans
+passer par l'interface web. Desactive par defaut (carte **Bouton tactile**
+de l'interface web, voir section 4).
+
+| Module | ESP32-C6-DEV-KIT-N8 | ESP32-C3 SuperMini |
+|---|---|---|
+| VCC | 3V3 | 3V3 |
+| GND | GND | GND |
+| I/O | GPIO21 (defaut) | GPIO3 (defaut) |
+
+Broche par defaut dans [`include/config.h`](include/config.h)
+(`DEFAULT_TOUCH_PIN`), modifiable comme les autres depuis l'interface web
+(ce reglage s'applique immediatement, sans redemarrage).
+
 **Alimentation** : 4 matrices MAX7219 a pleine luminosite peuvent consommer
 jusqu'a ~800 mA-1 A sous 5V. Ne les alimentez pas depuis la broche 5V/3V3 de
 l'ESP32 si vous montez la luminosite haute : utilisez une alimentation 5V
@@ -178,10 +194,20 @@ Pour tout effacer (Wi-Fi inclus) et revenir au mode point d'acces :
 - **Broches (GPIO)** : DIN/CLK/CS de la matrice et SDA/SCL de la sonde. Les 5
   doivent etre differentes ; toute modification redemarre la carte pour
   reinitialiser la matrice et le bus I2C avec les nouvelles broches.
+- **Bouton tactile (TTP223)** : activation et broche (voir section 1).
+  Reglage applique immediatement, sans redemarrage.
 - **Systeme** : redemarrage, reinitialisation usine, statut (IP, heure,
   etat NTP, uptime, version).
 - **Mise a jour du firmware** : televersement OTA d'un fichier `.bin`
   (voir section suivante).
+
+Une fois le bouton tactile active : un **appui court** fait passer au mode
+d'affichage fixe suivant, sans defilement — **Heure** (par defaut) ->
+**Date** (`JJ/MM`) -> **Temperature** (si une sonde est detectee, sinon ce
+mode est saute) -> retour a l'heure. Un **appui long** (~1 seconde) eteint
+l'affichage ; un nouvel appui long le rallume (independamment du mode nuit).
+Ce mode d'affichage et l'extinction manuelle ne sont pas sauvegardes : la
+carte redemarre toujours sur l'heure, affichage allume.
 
 ## 5. Mise a jour du firmware (OTA)
 
@@ -226,6 +252,7 @@ src/
   time_sync.{h,cpp}      Configuration NTP + fuseau horaire (SNTP integre ESP32)
   display.{h,cpp}        Pilotage des 4 matrices via MD_Parola/MD_MAX72XX, mode nuit
   sensor.{h,cpp}          Sonde de temperature I2C BME280/BMP280
+  touch_button.{h,cpp}   Bouton tactile TTP223 (appui court/long)
   web_ui.h                Page HTML/CSS/JS de configuration (embarquee en flash)
   web_portal.{h,cpp}     Portail Wi-Fi (AP + portail captif) + serveur web/API
   main.cpp                 setup()/loop()

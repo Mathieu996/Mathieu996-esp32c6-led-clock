@@ -35,6 +35,17 @@ static unsigned long lastNightCheck = 0;
 static long lastDrawnKey = -1000; // etat deja affiche (heure + deux-points), -1000 = a redessiner
 static bool nightActive = false;
 
+// Mode d'affichage fixe choisi par le bouton tactile (DM_STATIC_CLOCK
+// uniquement ; sans effet sur le defilement de la date ou la sequence de
+// demarrage). VIEW_CLOCK est le comportement d'origine (heure + defilement
+// periodique de la date si active).
+enum FixedView : uint8_t { VIEW_CLOCK, VIEW_DATE, VIEW_TEMP };
+static FixedView currentView = VIEW_CLOCK;
+
+// Extinction manuelle (bouton tactile, appui long), independante du mode
+// nuit. Non sauvegardee : repart allumee a chaque demarrage.
+static bool manualOff = false;
+
 // ---------------------------------------------------------------------------
 // Heure fixe avec secondes : HH:MM en chiffres 4x7 sur les 3 premiers
 // modules, secondes en chiffres 3x5 en bas a droite du dernier module.
@@ -205,6 +216,40 @@ static void updateStaticClock() {
   }
 }
 
+// Date ou temperature fixes (sans defilement), affichees par-dessus l'heure
+// quand currentView != VIEW_CLOCK. Cle de redessin dans une plage disjointe
+// de celle de l'heure (voir updateStaticClock) pour declencher un redessin
+// immediat au changement de vue.
+static void buildFixedDateStr(char *out, size_t n) {
+  struct tm ti;
+  if (getLocalTime(&ti, 5)) snprintf(out, n, "%02d/%02d", ti.tm_mday, ti.tm_mon + 1);
+  else strlcpy(out, "--/--", n);
+}
+
+static void buildFixedTempStr(char *out, size_t n) {
+  if (sensorAvailable()) snprintf(out, n, "%.1f%cC", sensorTemperature(), 176);
+  else strlcpy(out, "--.-", n);
+}
+
+static void updateFixedView() {
+  long key;
+  char buf[16];
+  if (currentView == VIEW_DATE) {
+    struct tm ti;
+    key = 1000000L + (getLocalTime(&ti, 5) ? ti.tm_yday : -1);
+    buildFixedDateStr(buf, sizeof(buf));
+  } else { // VIEW_TEMP
+    float t = sensorTemperature();
+    long tenths = (long)(t * 10.0f + (t >= 0 ? 0.5f : -0.5f));
+    key = 2000000L + (sensorAvailable() ? tenths : -1);
+    buildFixedTempStr(buf, sizeof(buf));
+  }
+  if (key == lastDrawnKey) return;
+  lastDrawnKey = key;
+  P->setTextAlignment(PA_CENTER);
+  P->print(buf);
+}
+
 // ---------------------------------------------------------------------------
 // Mode nuit
 // ---------------------------------------------------------------------------
@@ -221,7 +266,7 @@ static bool isNightNow() {
 static void applyBrightness() {
   // Pendant la sequence de demarrage, l'adresse IP reste lisible meme la nuit.
   bool night = nightActive && dispMode != DM_BOOT;
-  bool off = night && gConfig.nightOff;
+  bool off = manualOff || (night && gConfig.nightOff);
   P->displayShutdown(off);
   if (!off) {
     uint8_t level = night ? gConfig.nightBrightness : gConfig.brightness;
@@ -299,7 +344,8 @@ void displayLoop() {
   }
 
   // DM_STATIC_CLOCK : heure fixe, avec defilement periodique de la date
-  if (gConfig.showDateScroll &&
+  // (uniquement en vue Heure ; les vues Date/Temperature restent fixes).
+  if (currentView == VIEW_CLOCK && gConfig.showDateScroll &&
       (now - lastDateShown >= (unsigned long)gConfig.dateIntervalSec * 1000)) {
     char buf[32];
     buildDateStr(buf, sizeof(buf));
@@ -309,6 +355,23 @@ void displayLoop() {
 
   if (now - lastStaticRefresh >= 50) {
     lastStaticRefresh = now;
-    updateStaticClock();
+    if (currentView == VIEW_CLOCK) updateStaticClock();
+    else updateFixedView();
   }
+}
+
+void displayCycleView() {
+  // Saute Temperature s'il n'y a pas de sonde (au plus 3 essais : un tour complet).
+  for (int tries = 0; tries < 3; tries++) {
+    currentView = (FixedView)((currentView + 1) % 3);
+    if (currentView != VIEW_TEMP || sensorAvailable()) break;
+  }
+  if (currentView == VIEW_CLOCK) lastDateShown = millis(); // evite un defilement immediat au retour
+  lastDrawnKey = -1000; // force un redessin immediat
+  lastStaticRefresh = 0;
+}
+
+void displayToggleManualOff() {
+  manualOff = !manualOff;
+  applyBrightness();
 }

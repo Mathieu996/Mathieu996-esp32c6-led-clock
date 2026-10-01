@@ -32,6 +32,9 @@ void configLoad(AppConfig &cfg) {
   cfg.sensorSdaPin      = prefs.getUChar("sdapin", DEFAULT_SENSOR_SDA_PIN);
   cfg.sensorSclPin      = prefs.getUChar("sclpin", DEFAULT_SENSOR_SCL_PIN);
 
+  cfg.touchEnabled      = prefs.getBool("touchon", false);
+  cfg.touchPin          = prefs.getUChar("touchpin", DEFAULT_TOUCH_PIN);
+
   cfg.showTemp         = prefs.getBool("showtemp", true);
   cfg.tempOffset        = prefs.getFloat("tempoff", 0.0f);
   cfg.nightEnabled      = prefs.getBool("nighton", true);
@@ -68,6 +71,9 @@ void configSave(const AppConfig &cfg) {
   prefs.putUChar("cspin", cfg.matrixCsPin);
   prefs.putUChar("sdapin", cfg.sensorSdaPin);
   prefs.putUChar("sclpin", cfg.sensorSclPin);
+
+  prefs.putBool("touchon", cfg.touchEnabled);
+  prefs.putUChar("touchpin", cfg.touchPin);
 
   prefs.putBool("showtemp", cfg.showTemp);
   prefs.putFloat("tempoff", cfg.tempOffset);
