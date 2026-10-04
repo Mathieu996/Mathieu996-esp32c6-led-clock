@@ -114,54 +114,73 @@ static void pushFrame() {
   mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
 }
 
-// Tourne le contenu actuel de l'ecran de 180 deg (colonnes ET bits inverses,
-// meme principe que pushFrame() ci-dessus). Sa propre inverse : appliquee
-// deux fois, elle ne change rien.
-static void rotateBuffer180() {
+// ---------------------------------------------------------------------------
+// Defilement de texte : moteur maison (plutot que MD_Parola, voir plus bas),
+// qui dessine dans frame[] et passe par pushFrame() -- exactement comme
+// l'horloge statique ci-dessus, deja fiable avec "Retourner l'affichage" dans
+// les deux sens. Le texte est converti une fois en un "ruban" (bitmap du
+// message entier, une colonne par octet) via MD_MAX72XX::getChar(), qui lit
+// directement la police integree de la bibliotheque -- meme police que le
+// reste de l'affichage, et technique documentee par l'exemple
+// MD_MAX72xx_Test.ino de la bibliotheque elle-meme.
+//
+// (MD_Parola a ete abandonnee pour le defilement : son effet PA_FLIP_LR ne
+// fonctionne pas avec le defilement, confirme a l'usage par plusieurs essais
+// infructueux -- texte a l'envers, puis en miroir, puis une image fantome
+// persistante malgre les correctifs.)
+// ---------------------------------------------------------------------------
+static const uint16_t RIBBON_MAX = 480; // ~48 caracteres * jusqu'a 8 colonnes + espacement
+static uint8_t ribbon[RIBBON_MAX];
+static uint16_t ribbonLen = 0;
+static long scrollOffset = 0; // colonne du ruban affichee a l'extreme gauche de l'ecran
+static unsigned long lastScrollStepAt = 0;
+static const unsigned long SCROLL_STEP_MS = 60; // vitesse du defilement (ms par colonne)
+
+// Construit le ruban a partir du texte, dans l'ordre de lecture gauche ->
+// droite (confirme par l'exemple officiel cite plus haut).
+static void buildRibbon(const char *text) {
   MD_MAX72XX *mx = P->getGraphicObject();
-  uint8_t tmp[DISPLAY_COLS];
-  for (uint8_t c = 0; c < DISPLAY_COLS; c++) tmp[c] = mx->getColumn(c);
-  for (uint8_t x = 0; x < DISPLAY_COLS; x++)
-    mx->setColumn(x, reverseBits(tmp[DISPLAY_COLS - 1 - x]));
+  ribbonLen = 0;
+  for (const char *p = text; *p; p++) {
+    uint8_t cbuf[8]; // suffisant pour toutes les polices integrees (meme taille que l'exemple officiel)
+    uint8_t w = mx->getChar((uint8_t)*p, sizeof(cbuf), cbuf);
+    if (ribbonLen + w + 1 > RIBBON_MAX) break; // securite : message trop long, tronque
+    for (uint8_t i = 0; i < w; i++) ribbon[ribbonLen++] = cbuf[i];
+    ribbon[ribbonLen++] = 0; // espace inter-caracteres
+  }
 }
 
-// A utiliser a la place de P->displayAnimate() partout ou l'affichage peut
-// defiler. MD_Parola ne gere pas correctement l'effet FLIP_LR combine a un
-// defilement (documente dans MD_Parola.h : "Does not work with ...
-// SCROLL_LEFT, SCROLL_RIGHT" ; confirme a l'usage par plusieurs essais :
-// texte lu a l'envers, puis en miroir). On laisse donc Parola animer sans
-// aucune rotation (effets eteints par startScroll()), en tampon seul (sans
-// l'envoyer a la puce) ; si une image a reellement change (la plupart des
-// appels ne font rien : MD_PZone.cpp limite l'animation a la vitesse
-// configuree, ~60 ms, et retourne aussitot sinon), on tourne le resultat de
-// 180 deg pour l'envoyer a la puce (seule sortie physique visible), puis on
-// annule aussitot cette rotation dans le tampon pour que Parola continue a
-// animer normalement au prochain appel (rotateBuffer180() est sa propre
-// inverse). Le test de changement evite de reenvoyer inutilement les 32
-// colonnes a chaque passage de boucle (des milliers de fois par seconde) :
-// en SPI logiciel (broches bit-bang), cela perturbait la liaison et
-// produisait une image fantome, en miroir, defilant a l'envers.
-static bool animateFlipAware() {
-  if (!gConfig.flipDisplay) return P->displayAnimate();
-
-  MD_MAX72XX *mx = P->getGraphicObject();
-  uint8_t before[DISPLAY_COLS];
-  for (uint8_t c = 0; c < DISPLAY_COLS; c++) before[c] = mx->getColumn(c);
-
-  mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
-  bool done = P->displayAnimate();
-
-  bool changed = false;
-  for (uint8_t c = 0; c < DISPLAY_COLS; c++) {
-    if (mx->getColumn(c) != before[c]) { changed = true; break; }
+// Dessine la fenetre du ruban visible a `offset` (colonne du ruban affichee
+// a l'extreme gauche de l'ecran, peut etre negative ou depasser ribbonLen
+// pour laisser le texte entrer/sortir completement) puis l'envoie via
+// pushFrame().
+static void drawRibbonWindow(long offset) {
+  memset(frame, 0, sizeof(frame));
+  for (uint8_t x = 0; x < DISPLAY_COLS; x++) {
+    long r = offset + x;
+    if (r >= 0 && r < (long)ribbonLen) frame[x] = ribbon[r];
   }
-  if (changed) {
-    rotateBuffer180();
-    mx->update(); // flush manuel : seule sortie physique, deja tournee
-    rotateBuffer180(); // remet le tampon en orientation normale pour Parola
-  }
-  mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
-  return done;
+  pushFrame();
+}
+
+// Repart du debut (texte hors champ a droite), sans reconstruire le ruban :
+// pour repeter le meme texte (defilement en boucle, sequence de demarrage).
+static void restartScroll() {
+  scrollOffset = -(long)DISPLAY_COLS;
+  lastScrollStepAt = millis();
+  drawRibbonWindow(scrollOffset);
+}
+
+// Avance le defilement d'une colonne si le temps imparti est ecoule (sinon
+// ne fait rien : ne redessine/renvoie a la puce que lorsque necessaire,
+// comme l'horloge statique). Retourne vrai quand un passage complet (texte
+// entre, traverse et sort completement de l'ecran) est termine.
+static bool scrollStep() {
+  if (millis() - lastScrollStepAt < SCROLL_STEP_MS) return false;
+  lastScrollStepAt = millis();
+  scrollOffset++;
+  drawRibbonWindow(scrollOffset);
+  return scrollOffset >= (long)ribbonLen;
 }
 
 static void drawClockWithSeconds(const struct tm &ti, bool colon) {
@@ -219,22 +238,9 @@ static void buildDateStr(char *out, size_t n) {
 }
 
 static void startScroll(const char *text) {
-  // MD_Parola ne copie pas le texte : elle garde un pointeur et le relit a
-  // chaque image du defilement. Il faut donc un tampon qui reste valide (un
-  // tableau local a l'appelant serait deja ecrase -> caracteres aleatoires).
-  static char scrollBuf[48];
-  strlcpy(scrollBuf, text, sizeof(scrollBuf));
-
-  // Affichage retourne (180 deg) : les effets FLIP_UD/FLIP_LR de MD_Parola
-  // ne fonctionnent pas avec le defilement (voir animateFlipAware(), qui
-  // gere la rotation elle-meme a la place). Toujours eteints ici ; retablis
-  // pour l'affichage statique dans resumeClock().
-  P->setZoneEffect(0, false, PA_FLIP_UD);
-  P->setZoneEffect(0, false, PA_FLIP_LR);
-
-  P->displayClear();
-  P->displayText(scrollBuf, PA_CENTER, 60, 300, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  buildRibbon(text);
   dispMode = DM_SCROLLING;
+  restartScroll();
 }
 
 static void applyBrightness();
@@ -244,10 +250,6 @@ static void resumeClock() {
   dispMode = DM_STATIC_CLOCK;
   lastDrawnKey = -1000;
   lastStaticRefresh = 0;
-  // Retablis apres un eventuel defilement (voir startScroll()) : l'affichage
-  // statique (heure/date/temperature), lui, gere correctement ces effets.
-  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_UD);
-  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR);
   applyBrightness(); // fin eventuelle de la sequence de demarrage : le mode nuit reprend
 }
 
@@ -377,14 +379,14 @@ void displayStartBootSequence(const char *text, bool untilTimeSynced) {
 }
 
 // Fait defiler `text` une seule fois, de facon bloquante (boucle sur
-// displayAnimate() jusqu'a la fin du passage). Reservee a setup(), avant que
+// scrollStep() jusqu'a la fin du passage). Reservee a setup(), avant que
 // la boucle principale ne tourne : par ex. la banniere "Horloge LED vX.Y.Z"
 // affichee avant la sequence IP/AP. maxMs borne le blocage si l'animation ne
 // se termine jamais (securite, ne devrait pas arriver en usage normal).
 void displayScrollOnceBlocking(const char *text, unsigned long maxMs) {
   startScroll(text);
   unsigned long start = millis();
-  while (!animateFlipAware()) {
+  while (!scrollStep()) {
     if (millis() - start >= maxMs) break;
   }
   resumeClock();
@@ -417,20 +419,20 @@ void displayLoop() {
   }
 
   if (dispMode == DM_BOOT) {
-    if (animateFlipAware()) { // un passage complet de l'adresse est termine
+    if (scrollStep()) { // un passage complet de l'adresse est termine
       bool done = bootWaitSync && (timeIsSynced() || now - bootStartedAt >= BOOT_IP_MAX_MS);
       if (done) {
         lastDateShown = now;
         resumeClock();
       } else {
-        P->displayReset(); // meme texte, on recommence
+        restartScroll(); // meme texte, on recommence
       }
     }
     return;
   }
 
   if (dispMode == DM_SCROLLING) {
-    if (animateFlipAware()) { // fin du defilement de la date
+    if (scrollStep()) { // fin du defilement de la date
       lastDateShown = now;
       resumeClock();
     }
@@ -438,8 +440,8 @@ void displayLoop() {
   }
 
   if (dispMode == DM_CUSTOM) {
-    if (animateFlipAware()) { // un passage complet du texte personnalise est termine
-      if (customLoop) P->displayReset(); // meme texte, on recommence
+    if (scrollStep()) { // un passage complet du texte personnalise est termine
+      if (customLoop) restartScroll(); // meme texte, on recommence
       else resumeClock();
     }
     return;
