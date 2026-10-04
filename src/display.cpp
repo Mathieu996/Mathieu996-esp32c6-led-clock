@@ -114,6 +114,40 @@ static void pushFrame() {
   mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
 }
 
+// Tourne le contenu actuel de l'ecran de 180 deg (colonnes ET bits inverses,
+// meme principe que pushFrame() ci-dessus). Sa propre inverse : appliquee
+// deux fois, elle ne change rien.
+static void rotateBuffer180() {
+  MD_MAX72XX *mx = P->getGraphicObject();
+  uint8_t tmp[DISPLAY_COLS];
+  for (uint8_t c = 0; c < DISPLAY_COLS; c++) tmp[c] = mx->getColumn(c);
+  for (uint8_t x = 0; x < DISPLAY_COLS; x++)
+    mx->setColumn(x, reverseBits(tmp[DISPLAY_COLS - 1 - x]));
+}
+
+// A utiliser a la place de P->displayAnimate() partout ou l'affichage peut
+// defiler. MD_Parola ne gere pas correctement l'effet FLIP_LR combine a un
+// defilement (documente dans MD_Parola.h : "Does not work with ...
+// SCROLL_LEFT, SCROLL_RIGHT" ; confirme a l'usage par plusieurs essais :
+// texte lu a l'envers, puis en miroir). On laisse donc Parola animer sans
+// aucune rotation (effets eteints par startScroll()), en tampon seul (sans
+// l'envoyer a la puce) ; on tourne ensuite ce resultat de 180 deg pour
+// l'envoyer a la puce (seule sortie physique visible), puis on annule
+// aussitot cette rotation dans le tampon pour que Parola continue a animer
+// normalement au prochain appel (rotateBuffer180() est sa propre inverse).
+static bool animateFlipAware() {
+  if (!gConfig.flipDisplay) return P->displayAnimate();
+
+  MD_MAX72XX *mx = P->getGraphicObject();
+  mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
+  bool done = P->displayAnimate();
+  rotateBuffer180();
+  mx->update(); // flush manuel : seule sortie physique, deja tournee
+  rotateBuffer180(); // remet le tampon en orientation normale pour Parola
+  mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
+  return done;
+}
+
 static void drawClockWithSeconds(const struct tm &ti, bool colon) {
   memset(frame, 0, sizeof(frame));
   int hour = ti.tm_hour;
@@ -175,21 +209,15 @@ static void startScroll(const char *text) {
   static char scrollBuf[48];
   strlcpy(scrollBuf, text, sizeof(scrollBuf));
 
-  // Affichage retourne (180 deg) : PA_FLIP_LR ne fonctionne pas avec les
-  // effets de defilement (documente dans MD_Parola.h : "Does not work with
-  // ... SCROLL_LEFT, SCROLL_RIGHT" ; confirme a l'usage : le texte se lisait
-  // a l'envers). On retourne donc le defilement autrement : FLIP_LR reste
-  // eteint pendant le defilement (seul FLIP_UD reste actif, lui compatible),
-  // et on defile dans l'autre sens (SCROLL_RIGHT au lieu de SCROLL_LEFT) --
-  // la bibliotheque retourne alors chaque caractere et parcourt le texte
-  // dans le bon ordre, et le defilement va bien dans le sens physiquement
-  // attendu une fois le panneau retourne. FLIP_LR est retabli pour
-  // l'affichage statique dans resumeClock().
+  // Affichage retourne (180 deg) : les effets FLIP_UD/FLIP_LR de MD_Parola
+  // ne fonctionnent pas avec le defilement (voir animateFlipAware(), qui
+  // gere la rotation elle-meme a la place). Toujours eteints ici ; retablis
+  // pour l'affichage statique dans resumeClock().
+  P->setZoneEffect(0, false, PA_FLIP_UD);
   P->setZoneEffect(0, false, PA_FLIP_LR);
-  textEffect_t dir = gConfig.flipDisplay ? PA_SCROLL_RIGHT : PA_SCROLL_LEFT;
 
   P->displayClear();
-  P->displayText(scrollBuf, PA_CENTER, 60, 300, dir, dir);
+  P->displayText(scrollBuf, PA_CENTER, 60, 300, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
   dispMode = DM_SCROLLING;
 }
 
@@ -200,7 +228,10 @@ static void resumeClock() {
   dispMode = DM_STATIC_CLOCK;
   lastDrawnKey = -1000;
   lastStaticRefresh = 0;
-  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR); // retabli apres un eventuel defilement (voir startScroll())
+  // Retablis apres un eventuel defilement (voir startScroll()) : l'affichage
+  // statique (heure/date/temperature), lui, gere correctement ces effets.
+  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_UD);
+  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR);
   applyBrightness(); // fin eventuelle de la sequence de demarrage : le mode nuit reprend
 }
 
@@ -337,7 +368,7 @@ void displayStartBootSequence(const char *text, bool untilTimeSynced) {
 void displayScrollOnceBlocking(const char *text, unsigned long maxMs) {
   startScroll(text);
   unsigned long start = millis();
-  while (!P->displayAnimate()) {
+  while (!animateFlipAware()) {
     if (millis() - start >= maxMs) break;
   }
   resumeClock();
@@ -370,7 +401,7 @@ void displayLoop() {
   }
 
   if (dispMode == DM_BOOT) {
-    if (P->displayAnimate()) { // un passage complet de l'adresse est termine
+    if (animateFlipAware()) { // un passage complet de l'adresse est termine
       bool done = bootWaitSync && (timeIsSynced() || now - bootStartedAt >= BOOT_IP_MAX_MS);
       if (done) {
         lastDateShown = now;
@@ -383,7 +414,7 @@ void displayLoop() {
   }
 
   if (dispMode == DM_SCROLLING) {
-    if (P->displayAnimate()) { // fin du defilement de la date
+    if (animateFlipAware()) { // fin du defilement de la date
       lastDateShown = now;
       resumeClock();
     }
@@ -391,7 +422,7 @@ void displayLoop() {
   }
 
   if (dispMode == DM_CUSTOM) {
-    if (P->displayAnimate()) { // un passage complet du texte personnalise est termine
+    if (animateFlipAware()) { // un passage complet du texte personnalise est termine
       if (customLoop) P->displayReset(); // meme texte, on recommence
       else resumeClock();
     }
