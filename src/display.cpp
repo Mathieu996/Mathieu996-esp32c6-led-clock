@@ -102,17 +102,6 @@ static uint8_t reverseBits(uint8_t b) {
   return b;
 }
 
-// Inverse une chaine sur place (simple echange par les deux bouts).
-static void reverseStrInPlace(char *s) {
-  size_t i = 0, j = strlen(s);
-  if (j == 0) return;
-  j--;
-  while (i < j) {
-    char t = s[i]; s[i] = s[j]; s[j] = t;
-    i++; j--;
-  }
-}
-
 // Envoie l'image aux modules, avec la rotation 180 deg si "Retourner l'affichage".
 // La colonne 0 de MD_MAX72XX est a droite de l'ecran.
 static void pushFrame() {
@@ -186,18 +175,21 @@ static void startScroll(const char *text) {
   static char scrollBuf[48];
   strlcpy(scrollBuf, text, sizeof(scrollBuf));
 
-  // Affichage retourne (180 deg) : avec un effet de defilement (SCROLL_LEFT),
-  // la combinaison FLIP_UD+FLIP_LR de MD_Parola (voir displayApplySettings())
-  // ne retourne chaque caractere qu'en parcourant aussi le texte a l'envers
-  // (limitation documentee de la bibliotheque : PA_FLIP_LR "does not work
-  // with ... SCROLL_LEFT, SCROLL_RIGHT", MD_Parola.h). Sans contre-mesure,
-  // le texte se lit a l'envers. En lui fournissant deja la chaine inversee,
-  // ce parcours a l'envers recompose le bon ordre, tout en orientant
-  // correctement chaque caractere.
-  if (gConfig.flipDisplay) reverseStrInPlace(scrollBuf);
+  // Affichage retourne (180 deg) : PA_FLIP_LR ne fonctionne pas avec les
+  // effets de defilement (documente dans MD_Parola.h : "Does not work with
+  // ... SCROLL_LEFT, SCROLL_RIGHT" ; confirme a l'usage : le texte se lisait
+  // a l'envers). On retourne donc le defilement autrement : FLIP_LR reste
+  // eteint pendant le defilement (seul FLIP_UD reste actif, lui compatible),
+  // et on defile dans l'autre sens (SCROLL_RIGHT au lieu de SCROLL_LEFT) --
+  // la bibliotheque retourne alors chaque caractere et parcourt le texte
+  // dans le bon ordre, et le defilement va bien dans le sens physiquement
+  // attendu une fois le panneau retourne. FLIP_LR est retabli pour
+  // l'affichage statique dans resumeClock().
+  P->setZoneEffect(0, false, PA_FLIP_LR);
+  textEffect_t dir = gConfig.flipDisplay ? PA_SCROLL_RIGHT : PA_SCROLL_LEFT;
 
   P->displayClear();
-  P->displayText(scrollBuf, PA_CENTER, 60, 300, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+  P->displayText(scrollBuf, PA_CENTER, 60, 300, dir, dir);
   dispMode = DM_SCROLLING;
 }
 
@@ -208,6 +200,7 @@ static void resumeClock() {
   dispMode = DM_STATIC_CLOCK;
   lastDrawnKey = -1000;
   lastStaticRefresh = 0;
+  P->setZoneEffect(0, gConfig.flipDisplay, PA_FLIP_LR); // retabli apres un eventuel defilement (voir startScroll())
   applyBrightness(); // fin eventuelle de la sequence de demarrage : le mode nuit reprend
 }
 
