@@ -131,19 +131,35 @@ static void rotateBuffer180() {
 // SCROLL_LEFT, SCROLL_RIGHT" ; confirme a l'usage par plusieurs essais :
 // texte lu a l'envers, puis en miroir). On laisse donc Parola animer sans
 // aucune rotation (effets eteints par startScroll()), en tampon seul (sans
-// l'envoyer a la puce) ; on tourne ensuite ce resultat de 180 deg pour
-// l'envoyer a la puce (seule sortie physique visible), puis on annule
-// aussitot cette rotation dans le tampon pour que Parola continue a animer
-// normalement au prochain appel (rotateBuffer180() est sa propre inverse).
+// l'envoyer a la puce) ; si une image a reellement change (la plupart des
+// appels ne font rien : MD_PZone.cpp limite l'animation a la vitesse
+// configuree, ~60 ms, et retourne aussitot sinon), on tourne le resultat de
+// 180 deg pour l'envoyer a la puce (seule sortie physique visible), puis on
+// annule aussitot cette rotation dans le tampon pour que Parola continue a
+// animer normalement au prochain appel (rotateBuffer180() est sa propre
+// inverse). Le test de changement evite de reenvoyer inutilement les 32
+// colonnes a chaque passage de boucle (des milliers de fois par seconde) :
+// en SPI logiciel (broches bit-bang), cela perturbait la liaison et
+// produisait une image fantome, en miroir, defilant a l'envers.
 static bool animateFlipAware() {
   if (!gConfig.flipDisplay) return P->displayAnimate();
 
   MD_MAX72XX *mx = P->getGraphicObject();
+  uint8_t before[DISPLAY_COLS];
+  for (uint8_t c = 0; c < DISPLAY_COLS; c++) before[c] = mx->getColumn(c);
+
   mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::OFF);
   bool done = P->displayAnimate();
-  rotateBuffer180();
-  mx->update(); // flush manuel : seule sortie physique, deja tournee
-  rotateBuffer180(); // remet le tampon en orientation normale pour Parola
+
+  bool changed = false;
+  for (uint8_t c = 0; c < DISPLAY_COLS; c++) {
+    if (mx->getColumn(c) != before[c]) { changed = true; break; }
+  }
+  if (changed) {
+    rotateBuffer180();
+    mx->update(); // flush manuel : seule sortie physique, deja tournee
+    rotateBuffer180(); // remet le tampon en orientation normale pour Parola
+  }
   mx->control(MD_MAX72XX::UPDATE, MD_MAX72XX::ON);
   return done;
 }
